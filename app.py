@@ -223,22 +223,271 @@ def atualizar_usuario(user_id):
     except Exception as e:
         return {"msg": f"Erro ao atualizar usuário: {str(e)}"}, 500
 
-@app.route('/api/usuarios/<int:user_id>', methods=['DELETE'])
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# GESTÃO DE ESCALAS
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/escalas', methods=['POST'])
 @role_required('admin')
-def deletar_usuario(user_id):
-    """Deletar usuário (admin only)"""
+def criar_escala():
+    """Criar nova escala (admin only)"""
+    data = request.get_json()
+    
+    campos_obrigatorios = ['nome_festa', 'local_nome', 'local_endereco', 'data_festa',
+                          'horario_inicio', 'horario_fim', 'duracao_horas', 'produto', 'total_vagas']
+    
+    if not all(campo in data for campo in campos_obrigatorios):
+        return {"msg": f"Campos obrigatórios: {', '.join(campos_obrigatorios)}"}, 400
+    
     try:
         conn = get_connection()
         c = conn.cursor()
         
-        c.execute("DELETE FROM usuarios WHERE id = ?", (user_id,))
+        c.execute("""
+            INSERT INTO escalas 
+            (nome_festa, local_nome, local_endereco, data_festa, horario_inicio, 
+             horario_fim, duracao_horas, produto, atracoes, total_vagas, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data['nome_festa'],
+            data['local_nome'],
+            data['local_endereco'],
+            data['data_festa'],
+            data['horario_inicio'],
+            data['horario_fim'],
+            data['duracao_horas'],
+            data['produto'],
+            data.get('atracoes', ''),
+            data['total_vagas'],
+            'aberta'
+        ))
+        
+        escala_id = c.lastrowid
+        
+        # Criar vagas vazias para a escala
+        for i in range(data['total_vagas']):
+            c.execute("INSERT INTO escala_vagas (escala_id) VALUES (?)", (escala_id,))
+        
         conn.commit()
         conn.close()
         
-        return {"msg": "Usuário deletado com sucesso"}, 200
+        return {"msg": "Escala criada com sucesso", "escala_id": escala_id}, 201
     
     except Exception as e:
-        return {"msg": f"Erro ao deletar usuário: {str(e)}"}, 500
+        return {"msg": f"Erro ao criar escala: {str(e)}"}, 500
+
+@app.route('/api/escalas', methods=['GET'])
+@jwt_required()
+def listar_escalas():
+    """Listar escalas com filtros opcionais"""
+    try:
+        status = request.args.get('status', None)
+        futuras_apenas = request.args.get('futuras', 'true').lower() == 'true'
+        
+        conn = get_connection()
+        c = conn.cursor()
+        
+        query = "SELECT * FROM escalas WHERE 1=1"
+        params = []
+        
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        
+        if futuras_apenas:
+            query += " AND data_festa >= date('now')"
+        
+        query += " ORDER BY data_festa DESC"
+        
+        c.execute(query, params)
+        escalas = [dict(row) for row in c.fetchall()]
+        conn.close()
+        
+        return {"escalas": escalas}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao listar escalas: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>', methods=['GET'])
+@jwt_required()
+def obter_escala(escala_id):
+    """Obter detalhes completos de uma escala"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Dados da escala
+        c.execute("SELECT * FROM escalas WHERE id = ?", (escala_id,))
+        escala = c.fetchone()
+        
+        if not escala:
+            conn.close()
+            return {"msg": "Escala não encontrada"}, 404
+        
+        # Vagas da escala com info dos funcionários
+        c.execute("""
+            SELECT ev.id as vaga_id, ev.usuario_id, ev.confirmado_em, 
+                   u.nome, u.email, u.role
+            FROM escala_vagas ev
+            LEFT JOIN usuarios u ON ev.usuario_id = u.id
+            WHERE ev.escala_id = ?
+            ORDER BY ev.id
+        """, (escala_id,))
+        vagas = [dict(row) for row in c.fetchall()]
+        
+        conn.close()
+        
+        return {
+            **dict(escala),
+            "vagas": vagas,
+            "vagas_preenchidas": sum(1 for v in vagas if v['usuario_id'] is not None),
+            "vagas_disponiveis": sum(1 for v in vagas if v['usuario_id'] is None)
+        }, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao obter escala: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>', methods=['PUT'])
+@role_required('admin')
+def atualizar_escala(escala_id):
+    """Atualizar escala (admin only)"""
+    data = request.get_json()
+    
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Verificar se a escala existe
+        c.execute("SELECT total_vagas FROM escalas WHERE id = ?", (escala_id,))
+        escala = c.fetchone()
+        if not escala:
+            conn.close()
+            return {"msg": "Escala não encontrada"}, 404
+        
+        updates = []
+        params = []
+        
+        campos_permitidos = ['nome_festa', 'local_nome', 'local_endereco', 'data_festa',
+                            'horario_inicio', 'horario_fim', 'duracao_horas', 'produto',
+                            'atracoes', 'status']
+        
+        for campo in campos_permitidos:
+            if campo in data:
+                updates.append(f"{campo} = ?")
+                params.append(data[campo])
+        
+        # Se mudar total_vagas, adicionar/remover vagas
+        if 'total_vagas' in data:
+            novo_total = data['total_vagas']
+            vagas_atuais = escala['total_vagas']
+            
+            if novo_total > vagas_atuais:
+                # Adicionar vagas
+                for i in range(novo_total - vagas_atuais):
+                    c.execute("INSERT INTO escala_vagas (escala_id) VALUES (?)", (escala_id,))
+            elif novo_total < vagas_atuais:
+                # Remover vagas (apenas as vazias do final)
+                c.execute("""
+                    DELETE FROM escala_vagas 
+                    WHERE escala_id = ? AND usuario_id IS NULL 
+                    LIMIT ?
+                """, (escala_id, vagas_atuais - novo_total))
+            
+            updates.append("total_vagas = ?")
+            params.append(novo_total)
+        
+        if not updates:
+            conn.close()
+            return {"msg": "Nenhum campo para atualizar"}, 400
+        
+        updates.append("atualizado_em = ?")
+        params.append(datetime.now().isoformat())
+        params.append(escala_id)
+        
+        c.execute(f"UPDATE escalas SET {', '.join(updates)} WHERE id = ?", params)
+        conn.commit()
+        conn.close()
+        
+        return {"msg": "Escala atualizada com sucesso"}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao atualizar escala: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>', methods=['DELETE'])
+@role_required('admin')
+def deletar_escala(escala_id):
+    """Deletar escala (admin only)"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        c.execute("DELETE FROM escalas WHERE id = ?", (escala_id,))
+        conn.commit()
+        conn.close()
+        
+        return {"msg": "Escala deletada com sucesso"}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao deletar escala: {str(e)}"}, 500
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LIMPEZA AUTOMÁTICA (30 DIAS)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/admin/limpeza-automatica', methods=['POST'])
+@role_required('admin')
+def executar_limpeza_automatica():
+    """Executar limpeza de escalas com mais de 30 dias (admin only)"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Calcular data limite (30 dias atrás)
+        data_limite = (datetime.now() - timedelta(days=30)).date().isoformat()
+        
+        # Encontrar escalas antigas
+        c.execute("""
+            SELECT id FROM escalas 
+            WHERE data_festa < ?
+        """, (data_limite,))
+        
+        escalas_antigas = [row['id'] for row in c.fetchall()]
+        
+        # Deletar vagas e escalas antigas
+        for escala_id in escalas_antigas:
+            c.execute("DELETE FROM escala_vagas WHERE escala_id = ?", (escala_id,))
+            c.execute("DELETE FROM escalas WHERE id = ?", (escala_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "msg": "Limpeza automática executada com sucesso",
+            "escalas_removidas": len(escalas_antigas),
+            "data_limite": data_limite
+        }, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao executar limpeza: {str(e)}"}, 500
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ERROR HANDLERS
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.errorhandler(404)
+def nao_encontrado(error):
+    return {"msg": "Rota não encontrada"}, 404
+
+@app.errorhandler(405)
+def metodo_nao_permitido(error):
+    return {"msg": "Método não permitido"}, 405
+
+@app.errorhandler(500)
+def erro_interno(error):
+    return {"msg": "Erro interno do servidor"}, 500
 
 
 # ═════════════════════════════════════════════════════════════════════════════
