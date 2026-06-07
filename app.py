@@ -53,8 +53,9 @@ def get_current_user():
 # ═════════════════════════════════════════════════════════════════════════════
 
 @app.route('/api/auth/registro', methods=['POST'])
+@role_required('admin')
 def registro():
-    """Registrar novo usuário (apenas admin pode registrar outros usuários)"""
+    """Registrar novo usuário (APENAS ADMIN pode registrar)"""
     data = request.get_json()
     
     if not data or not data.get('email') or not data.get('senha') or not data.get('nome'):
@@ -65,7 +66,7 @@ def registro():
         c = conn.cursor()
         
         senha_hash = generate_password_hash(data['senha'])
-        role = data.get('role', 'funcionario')
+        role = data.get('role', 'funcionario')  # Default é funcionário
         
         c.execute("""
             INSERT INTO usuarios (nome, email, senha_hash, role)
@@ -79,6 +80,8 @@ def registro():
         return {
             "msg": "Usuário registrado com sucesso",
             "user_id": user_id,
+            "nome": data['nome'],
+            "email": data['email'],
             "role": role
         }, 201
     

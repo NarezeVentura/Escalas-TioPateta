@@ -1,4 +1,5 @@
 import sqlite3
+from werkzeug.security import generate_password_hash
 
 DB_PATH = "escala.db"
 
@@ -84,5 +85,39 @@ def init_db():
     """)
 
     conn.commit()
+    
+    # Criar admin inicial se não existir
+    criar_admin_inicial(conn)
+    
     conn.close()
     print("Banco de dados inicializado.")
+
+
+def criar_admin_inicial(conn):
+    """Criar o primeiro administrador se não existir"""
+    c = conn.cursor()
+    
+    email_admin = "viniventuras@yahoo.com"
+    
+    # Verificar se o admin já existe
+    c.execute("SELECT id FROM usuarios WHERE email = ?", (email_admin,))
+    if c.fetchone():
+        return  # Admin já existe, não fazer nada
+    
+    # Dados do admin
+    nome = "Tio Pateta"
+    senha = "TioPatet@1234"
+    
+    # Criar hash da senha
+    senha_hash = generate_password_hash(senha)
+    
+    # Inserir admin
+    c.execute("""
+        INSERT INTO usuarios (nome, email, senha_hash, role)
+        VALUES (?, ?, ?, ?)
+    """, (nome, email_admin, senha_hash, 'admin'))
+    
+    conn.commit()
+    print("✅ Administrador inicial criado!")
+    print(f"   📧 Email: {email_admin}")
+    print(f"   🔐 Senha: {senha}")
