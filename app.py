@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # Configurações
 app.config['JWT_SECRET_KEY'] = 'sua-chave-secreta-super-segura-mude-isso-em-producao'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=15)
 
 jwt = JWTManager(app)
 
