@@ -1,0 +1,34 @@
+# Ambientes Python
+venv/
+env/
+ENV/
+*.py[cod]
+*$py.class
+__pycache__/
+*.so
+.Python
+
+# Banco de dados
+escala.db
+*.db
+*.sqlite
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependências do pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Variáveis de ambiente
+.env
+.env.local
+
+# Logs
+*.log
