@@ -425,7 +425,83 @@ def deletar_escala(escala_id):
     
     except Exception as e:
         return {"msg": f"Erro ao deletar escala: {str(e)}"}, 500
+    
+    # GESTÃO DE FERRAMENTAS - LISTAR E ATUALIZAR QUANTIDADE
 
+
+@app.route('/api/ferramentas', methods=['GET'])
+@jwt_required()
+def listar_ferramentas():
+    """Listar ferramentas disponíveis para todos os usuários"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT id, nome, descricao, quantidade_total FROM ferramentas ORDER BY nome")
+        ferramentas = [dict(row) for row in c.fetchall()]
+        conn.close()
+
+        return {"ferramentas": ferramentas}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao listar ferramentas: {str(e)}"}, 500
+
+
+@app.route('/api/ferramentas/<int:ferramenta_id>', methods=['PUT'])
+@role_required('admin')
+def atualizar_ferramenta(ferramenta_id):
+    """Atualizar dados ou quantidade de uma ferramenta (admin only)"""
+    data = request.get_json() or {}
+
+    if 'quantidade_total' not in data and 'delta' not in data and 'nome' not in data and 'descricao' not in data:
+        return {"msg": "Informe nome, descricao, quantidade_total ou delta"}, 400
+
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("SELECT * FROM ferramentas WHERE id = ?", (ferramenta_id,))
+        ferramenta = c.fetchone()
+        if not ferramenta:
+            conn.close()
+            return {"msg": "Ferramenta não encontrada"}, 404
+
+        updates = []
+        params = []
+
+        if 'nome' in data:
+            updates.append("nome = ?")
+            params.append(data['nome'])
+
+        if 'descricao' in data:
+            updates.append("descricao = ?")
+            params.append(data['descricao'])
+
+        if 'quantidade_total' in data:
+            if data['quantidade_total'] is None or int(data['quantidade_total']) < 0:
+                conn.close()
+                return {"msg": "quantidade_total deve ser um número inteiro maior ou igual a 0"}, 400
+            updates.append("quantidade_total = ?")
+            params.append(int(data['quantidade_total']))
+        elif 'delta' in data:
+            delta = int(data['delta'])
+            new_total = ferramenta['quantidade_total'] + delta
+            if new_total < 0:
+                conn.close()
+                return {"msg": "A quantidade de ferramentas não pode ser negativa"}, 400
+            updates.append("quantidade_total = ?")
+            params.append(new_total)
+
+        if updates:
+            params.append(ferramenta_id)
+            c.execute(f"UPDATE ferramentas SET {', '.join(updates)} WHERE id = ?", params)
+            conn.commit()
+
+        conn.close()
+
+        return {"msg": "Ferramenta atualizada com sucesso"}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao atualizar quantidade: {str(e)}"}, 500
 
 
 # AUTO ESCALAÇÃO DOS FUNCIONÁRIos

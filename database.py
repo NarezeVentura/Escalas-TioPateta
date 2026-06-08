@@ -89,8 +89,42 @@ def init_db():
     # Criar admin inicial se não existir
     criar_admin_inicial(conn)
     
+    # Inserir ferramentas iniciais padrão
+    inserir_ferramentas_iniciais(conn)
+    
     conn.close()
     print("Banco de dados inicializado.")
+
+
+def inserir_ferramentas_iniciais(conn):
+    """Inserir ferramentas padrão se não existirem"""
+    c = conn.cursor()
+
+    ferramentas = [
+        ("Coletes verdes",              "Pacotes de coletes da cor verde",      2),
+        ("Coletes vermelhos",           "Pacotes de coletes da cor vermelha",   2),
+        ("Coletes azuis",               "Pacotes de coletes da cor azul",       2),
+        ("Coletes pretos",              "Pacotes de coletes da cor preta",      2),
+        ("Pistolas Nerf",               "Pistolas Nerf",                        6),
+        ("Caixas de dardos Nerf",       "Caixas de dardos para pistolas Nerf",  3),
+        ("Kits de cones",               "Kits de cones para delimitação",       4),
+        ("Apitos",                      "Apitos",                               4),
+        ("Bolas de futebol",            "Bolas de futebol",                     2),
+        ("Bolas de vôlei",              "Bolas de vôlei",                       2),
+        ("Bolas de basquete",           "Bolas de basquete",                    2),
+        ("Sacos para corrida de saco",  "Sacos para brincadeira de corrida",    4),
+        ("Kits de tintas antialérgicas","Kits de tintas antialérgicas",         6),
+        ("Kits de pincéis",             "Kits de pincéis",                      6),
+    ]
+
+    for nome, descricao, quantidade in ferramentas:
+        c.execute("""
+            INSERT OR IGNORE INTO ferramentas (nome, descricao, quantidade_total)
+            VALUES (?, ?, ?)
+        """, (nome, descricao, quantidade))
+
+    conn.commit()
+    print("Ferramentas iniciais inseridas!")
 
 
 def criar_admin_inicial(conn):
