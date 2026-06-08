@@ -14,9 +14,9 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=15)
 
 jwt = JWTManager(app)
 
-# ═════════════════════════════════════════════════════════════════════════════
-# HELPERS
-# ═════════════════════════════════════════════════════════════════════════════
+
+# HELPERS - PERMISSÕES     
+
 
 def role_required(role):
     """Decorator para verificar permissão de role"""
@@ -47,10 +47,8 @@ def get_current_user():
     user = c.fetchone()
     conn.close()
     return dict(user) if user else None
-
-# ═════════════════════════════════════════════════════════════════════════════
-# AUTENTICAÇÃO
-# ═════════════════════════════════════════════════════════════════════════════
+    
+#AUTENTICAÇÃO
 
 @app.route('/api/auth/registro', methods=['POST'])
 @role_required('admin')
@@ -66,7 +64,7 @@ def registro():
         c = conn.cursor()
         
         senha_hash = generate_password_hash(data['senha'])
-        role = data.get('role', 'funcionario')  # Default é funcionário
+        role = data.get('role', 'funcionario')  # Default é o funcionário
         
         c.execute("""
             INSERT INTO usuarios (nome, email, senha_hash, role)
@@ -123,9 +121,7 @@ def login():
     except Exception as e:
         return {"msg": f"Erro ao fazer login: {str(e)}"}, 500
 
-# ═════════════════════════════════════════════════════════════════════════════
-# GESTÃO DE USUÁRIOS
-# ═════════════════════════════════════════════════════════════════════════════
+# GESTÃO DE USUÁRIOS - CRIAÇÃO, EDIÇÃO E EXCLUSÃO 
 
 @app.route('/api/usuarios/me', methods=['GET'])
 @jwt_required()
@@ -225,9 +221,7 @@ def atualizar_usuario(user_id):
 
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# GESTÃO DE ESCALAS
-# ═════════════════════════════════════════════════════════════════════════════
+# GESTÃO DAS ESCALAS - ADICIONAR, EDITAR E EXCLUIR 
 
 @app.route('/api/escalas', methods=['POST'])
 @role_required('admin')
@@ -433,9 +427,178 @@ def deletar_escala(escala_id):
         return {"msg": f"Erro ao deletar escala: {str(e)}"}, 500
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# LIMPEZA AUTOMÁTICA (30 DIAS)
-# ═════════════════════════════════════════════════════════════════════════════
+
+# AUTO ESCALAÇÃO DOS FUNCIONÁRIos
+
+@app.route('/api/escalas/<int:escala_id>/inscrever', methods=['POST'])
+@jwt_required()
+def funcionario_se_inscrever(escala_id):
+    """Funcionário se escalar em uma escala"""
+    user_id = get_jwt_identity()
+    user = get_current_user()
+    
+    # Apenas funcionários podem se inscrever
+    if user['role'] != 'funcionario':
+        return {"msg": "Apenas funcionários podem se inscrever"}, 403
+    
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Verificar se a escala existe e está aberta
+        c.execute("SELECT id, status FROM escalas WHERE id = ?", (escala_id,))
+        escala = c.fetchone()
+        
+        if not escala:
+            conn.close()
+            return {"msg": "Escala não encontrada"}, 404
+        
+        if escala['status'] != 'aberta':
+            conn.close()
+            return {"msg": "Escala não está aberta para inscrições"}, 409
+        
+        # Verificar se já está inscrito
+        c.execute("""
+            SELECT id FROM escala_vagas 
+            WHERE escala_id = ? AND usuario_id = ?
+        """, (escala_id, user_id))
+        
+        if c.fetchone():
+            conn.close()
+            return {"msg": "Você já está inscrito nesta escala"}, 409
+        
+        # Encontrar primeira vaga disponível
+        c.execute("""
+            SELECT id FROM escala_vagas 
+            WHERE escala_id = ? AND usuario_id IS NULL
+            LIMIT 1
+        """, (escala_id,))
+        
+        vaga = c.fetchone()
+        
+        if not vaga:
+            conn.close()
+            return {"msg": "Não há vagas disponíveis nesta escala"}, 409
+        
+        # Atribuir funcionário à vaga
+        c.execute("""
+            UPDATE escala_vagas 
+            SET usuario_id = ?, confirmado_em = ? 
+            WHERE id = ?
+        """, (user_id, datetime.now().isoformat(), vaga['id']))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"msg": "Inscrito com sucesso na escala", "vaga_id": vaga['id']}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao se inscrever: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>/cancelar-inscricao', methods=['POST'])
+@jwt_required()
+def funcionario_cancelar_inscricao(escala_id):
+    """Funcionário cancelar sua inscrição em uma escala"""
+    user_id = get_jwt_identity()
+    
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Encontrar a vaga do funcionário nesta escala
+        c.execute("""
+            SELECT id FROM escala_vagas 
+            WHERE escala_id = ? AND usuario_id = ?
+        """, (escala_id, user_id))
+        
+        vaga = c.fetchone()
+        
+        if not vaga:
+            conn.close()
+            return {"msg": "Você não está inscrito nesta escala"}, 404
+        
+        # Remover funcionário da vaga
+        c.execute("""
+            UPDATE escala_vagas 
+            SET usuario_id = NULL, confirmado_em = NULL 
+            WHERE id = ?
+        """, (vaga['id'],))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"msg": "Inscrição cancelada com sucesso"}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao cancelar inscrição: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>/vagas', methods=['GET'])
+@jwt_required()
+def listar_vagas_escala(escala_id):
+    """Listar todas as vagas de uma escala"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        c.execute("""
+            SELECT ev.id, ev.usuario_id, ev.confirmado_em, 
+                   u.nome, u.email
+            FROM escala_vagas ev
+            LEFT JOIN usuarios u ON ev.usuario_id = u.id
+            WHERE ev.escala_id = ?
+            ORDER BY ev.id
+        """, (escala_id,))
+        
+        vagas = [dict(row) for row in c.fetchall()]
+        conn.close()
+        
+        return {"vagas": vagas}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao listar vagas: {str(e)}"}, 500
+
+@app.route('/api/escalas/<int:escala_id>/vagas/<int:vaga_id>/atribuir', methods=['POST'])
+@role_required('admin')
+def admin_atribuir_vaga(escala_id, vaga_id):
+    """Admin atribuir funcionário a uma vaga manualmente"""
+    data = request.get_json()
+    
+    if 'usuario_id' not in data:
+        return {"msg": "usuario_id é obrigatório"}, 400
+    
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        
+        # Verificar se a vaga existe
+        c.execute("""
+            SELECT id FROM escala_vagas 
+            WHERE id = ? AND escala_id = ?
+        """, (vaga_id, escala_id))
+        
+        if not c.fetchone():
+            conn.close()
+            return {"msg": "Vaga não encontrada"}, 404
+        
+        # Atribuir funcionário
+        c.execute("""
+            UPDATE escala_vagas 
+            SET usuario_id = ?, confirmado_em = ? 
+            WHERE id = ?
+        """, (data['usuario_id'], datetime.now().isoformat(), vaga_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"msg": "Funcionário atribuído com sucesso"}, 200
+    
+    except Exception as e:
+        return {"msg": f"Erro ao atribuir vaga: {str(e)}"}, 500
+
+
+
+# LIMPEZA AUTOMÁTICA (cada 30 DIAS)
+
 
 @app.route('/api/admin/limpeza-automatica', methods=['POST'])
 @role_required('admin')
@@ -473,9 +636,7 @@ def executar_limpeza_automatica():
     except Exception as e:
         return {"msg": f"Erro ao executar limpeza: {str(e)}"}, 500
 
-# ═════════════════════════════════════════════════════════════════════════════
-# ERROR HANDLERS
-# ═════════════════════════════════════════════════════════════════════════════
+# INFORMAÇÕES DE ERROS
 
 @app.errorhandler(404)
 def nao_encontrado(error):
@@ -490,12 +651,10 @@ def erro_interno(error):
     return {"msg": "Erro interno do servidor"}, 500
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 # INICIALIZAÇÃO
-# ═════════════════════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
     init_db()
-    print("✅ Banco de dados inicializado")
-    print("🚀 Iniciando servidor Flask...")
+    print("Banco de dados inicializado")
+    print("Iniciando o servidor Flask...")
     app.run(debug=True, host='0.0.0.0', port=5000)
