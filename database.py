@@ -15,7 +15,7 @@ def init_db():
     conn = get_connection()
     c = conn.cursor()
 
-    # ── 1. USUÁRIOS ───────────────────────────────────────────────────────────
+    #USUÁRIOS DA EMPRESA
     c.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +27,7 @@ def init_db():
         )
     """)
 
-    # ── 2. ESCALAS ────────────────────────────────────────────────────────────
+    #REGISTRO DE ESCALAS
     c.execute("""
         CREATE TABLE IF NOT EXISTS escalas (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,9 +47,9 @@ def init_db():
         )
     """)
 
-    # ── 3. VAGAS DA ESCALA ────────────────────────────────────────────────────
-    # Cada linha = uma bolha no frontend.
-    # usuario_id NULL = vaga aberta | preenchido = funcionário escalado.
+    #VAGAS DA ESCALA PARA OS FUNCIONARIOS 
+    #Cada linha significa uma bolha no frontend.
+    #usuario_id NULL é uma vaga aberta | preenchido = funcionário escalado.
     c.execute("""
         CREATE TABLE IF NOT EXISTS escala_vagas (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +59,7 @@ def init_db():
         )
     """)
 
-    # ── 4. FERRAMENTAS ────────────────────────────────────────────────────────
+    #FERRAMENTAS DE TRABALHO
     c.execute("""
         CREATE TABLE IF NOT EXISTS ferramentas (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +70,7 @@ def init_db():
         )
     """)
 
-    # ── 5. FERRAMENTAS POR ESCALA ─────────────────────────────────────────────
+    #FERRAMENTAS ESCALADAS (PARA VER QUANTAS TEM, QUEM PEGOU E ETC)
     c.execute("""
         CREATE TABLE IF NOT EXISTS escala_ferramentas (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,6 +118,6 @@ def criar_admin_inicial(conn):
     """, (nome, email_admin, senha_hash, 'admin'))
     
     conn.commit()
-    print("✅ Administrador inicial criado!")
-    print(f"   📧 Email: {email_admin}")
-    print(f"   🔐 Senha: {senha}")
+    print("Administrador inicial criado!")
+    print(f"Email: {email_admin}")
+    print(f"Senha: {senha}")
