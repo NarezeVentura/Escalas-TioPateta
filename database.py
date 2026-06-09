@@ -131,7 +131,7 @@ def criar_admin_inicial(conn):
     """Criar o primeiro administrador se não existir"""
     c = conn.cursor()
     
-    email_admin = "viniventuras@yahoo.com"
+    email_admin = "recreacaopatetatio@gmail.com"
     
     # Verificar se o admin já existe
     c.execute("SELECT id FROM usuarios WHERE email = ?", (email_admin,))
