@@ -70,20 +70,20 @@ def init_db():
         )
     """)
 
-    #FERRAMENTAS ESCALADAS (PARA VER QUANTAS TEM, QUEM PEGOU E ETC)
+    #AS RESERVAS DE FERRAMENTAS 
     c.execute("""
-        CREATE TABLE IF NOT EXISTS escala_ferramentas (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            escala_id        INTEGER NOT NULL REFERENCES escalas(id) ON DELETE CASCADE,
-            ferramenta_id    INTEGER NOT NULL REFERENCES ferramentas(id),
-            quantidade_usada INTEGER NOT NULL DEFAULT 1,
-            coletado_por     INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-            coletado_em      TEXT    DEFAULT NULL,
-            devolvido_em     TEXT    DEFAULT NULL,
-            UNIQUE(escala_id, ferramenta_id)
-        )
-    """)
-
+    CREATE TABLE IF NOT EXISTS ferramenta_reservas (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        ferramenta_id   INTEGER NOT NULL REFERENCES ferramentas(id) ON DELETE CASCADE,
+        usuario_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        escala_id       INTEGER REFERENCES escalas(id) ON DELETE SET NULL,
+        data_retirada   TEXT    NOT NULL,
+        hora_retirada   TEXT    NOT NULL,
+        status          TEXT    NOT NULL DEFAULT 'pendente',
+        devolvido_em    TEXT    DEFAULT NULL,
+        criado_em       TEXT    NOT NULL DEFAULT (datetime('now'))
+    )
+""")
     conn.commit()
     
     # Criar admin inicial se não existir

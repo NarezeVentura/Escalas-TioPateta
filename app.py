@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import sqlite3
 from functools import wraps
 from database import init_db, get_connection
-
+#acima, uso de apiREST feita com flask e jwt
 app = Flask(__name__)
 
 # Configurações
@@ -156,7 +156,7 @@ def obter_usuario(user_id):
     """Obter dados de um usuário específico"""
     user = get_current_user()
     
-    # Apenas admin ou o próprio usuário pode visualizar
+    #Apenas admin ou o próprio usuário pode visualizar
     if user['role'] != 'admin' and user['id'] != user_id:
         return {"msg": "Acesso negado"}, 403
     
@@ -181,7 +181,7 @@ def atualizar_usuario(user_id):
     """Atualizar dados do usuário"""
     user = get_current_user()
     
-    # Apenas admin ou o próprio usuário pode atualizar
+    #Apenas admin ou o próprio usuário pode atualizar
     if user['role'] != 'admin' and user['id'] != user_id:
         return {"msg": "Acesso negado"}, 403
     
@@ -426,17 +426,30 @@ def deletar_escala(escala_id):
     except Exception as e:
         return {"msg": f"Erro ao deletar escala: {str(e)}"}, 500
     
-    # GESTÃO DE FERRAMENTAS - LISTAR E ATUALIZAR QUANTIDADE
+    # GESTÃO DE FERRAMENTAS 
 
 
 @app.route('/api/ferramentas', methods=['GET'])
 @jwt_required()
 def listar_ferramentas():
-    """Listar ferramentas disponíveis para todos os usuários"""
+    """Listar ferramentas do cadastro geral"""
     try:
         conn = get_connection()
         c = conn.cursor()
-        c.execute("SELECT id, nome, descricao, quantidade_total FROM ferramentas ORDER BY nome")
+        c.execute("""
+            SELECT
+                f.id,
+                f.nome,
+                f.descricao,
+                f.quantidade_total,
+                f.quantidade_total - COALESCE(
+                    (SELECT COUNT(*) FROM ferramenta_reservas r
+                     WHERE r.ferramenta_id = f.id AND r.status = 'pendente'),
+                    0
+                ) AS quantidade_disponivel
+            FROM ferramentas f
+            ORDER BY f.nome
+        """)
         ferramentas = [dict(row) for row in c.fetchall()]
         conn.close()
 
@@ -502,6 +515,150 @@ def atualizar_ferramenta(ferramenta_id):
 
     except Exception as e:
         return {"msg": f"Erro ao atualizar quantidade: {str(e)}"}, 500
+    
+
+    #FAZER RESERVAS DE FERRAMENTAS
+
+@app.route('/api/ferramentas/<int:ferramenta_id>/reservar', methods=['POST'])
+@jwt_required()
+def reservar_ferramenta(ferramenta_id):
+    user_id = get_jwt_identity()
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    if not all(k in data for k in ['data_retirada', 'hora_retirada', 'escala_id']):
+        return {"msg": "Campos obrigatórios: data_retirada, hora_retirada, escala_id"}, 400
+
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("SELECT * FROM ferramentas WHERE id = ?", (ferramenta_id,))
+        ferramenta = c.fetchone()
+        if not ferramenta:
+            conn.close()
+            return {"msg": "Ferramenta não encontrada"}, 404
+
+        c.execute("SELECT id, nome_festa FROM escalas WHERE id = ?", (data['escala_id'],))
+        escala = c.fetchone()
+        if not escala:
+            conn.close()
+            return {"msg": "Escala não encontrada"}, 404
+
+        if user['role'] != 'admin':
+            c.execute("SELECT id FROM escala_vagas WHERE escala_id = ? AND usuario_id = ?",
+                      (data['escala_id'], user_id))
+            if not c.fetchone():
+                conn.close()
+                return {"msg": "Você não está inscrito nessa escala"}, 403
+
+        c.execute("SELECT COUNT(*) AS em_uso FROM ferramenta_reservas WHERE ferramenta_id = ? AND status = 'pendente'",
+                  (ferramenta_id,))
+        disponivel = ferramenta['quantidade_total'] - c.fetchone()['em_uso']
+        if disponivel <= 0:
+            conn.close()
+            return {"msg": "Nenhuma unidade disponível para reserva"}, 409
+
+        c.execute("""
+            INSERT INTO ferramenta_reservas (ferramenta_id, usuario_id, escala_id, data_retirada, hora_retirada, status)
+            VALUES (?, ?, ?, ?, ?, 'pendente')
+        """, (ferramenta_id, user_id, data['escala_id'], data['data_retirada'], data['hora_retirada']))
+
+        reserva_id = c.lastrowid
+        conn.commit()
+        conn.close()
+
+        return {"msg": "Ferramenta reservada com sucesso", "reserva_id": reserva_id,
+                "ferramenta": ferramenta['nome'], "festa": escala['nome_festa'],
+                "funcionario": user['nome'], "status": "pendente"}, 201
+
+    except Exception as e:
+        return {"msg": f"Erro ao reservar ferramenta: {str(e)}"}, 500
+
+
+@app.route('/api/reservas/<int:reserva_id>/devolver', methods=['POST'])
+@jwt_required()
+def devolver_ferramenta(reserva_id):
+    user_id = get_jwt_identity()
+    user = get_current_user()
+
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT r.*, f.nome AS ferramenta_nome FROM ferramenta_reservas r
+            JOIN ferramentas f ON f.id = r.ferramenta_id WHERE r.id = ?
+        """, (reserva_id,))
+        reserva = c.fetchone()
+
+        if not reserva:
+            conn.close()
+            return {"msg": "Reserva não encontrada"}, 404
+        if user['role'] != 'admin' and reserva['usuario_id'] != user_id:
+            conn.close()
+            return {"msg": "Acesso negado"}, 403
+        if reserva['status'] == 'devolvido':
+            conn.close()
+            return {"msg": "Ferramenta já foi devolvida"}, 409
+
+        devolvido_em = datetime.now().isoformat()
+        c.execute("UPDATE ferramenta_reservas SET status = 'devolvido', devolvido_em = ? WHERE id = ?",
+                  (devolvido_em, reserva_id))
+        conn.commit()
+        conn.close()
+
+        return {"msg": "Devolução registrada com sucesso",
+                "ferramenta": reserva['ferramenta_nome'], "devolvido_em": devolvido_em}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao registrar devolução: {str(e)}"}, 500
+
+
+@app.route('/api/reservas', methods=['GET'])
+@jwt_required()
+def listar_reservas():
+    user_id = get_jwt_identity()
+    user = get_current_user()
+    status_filtro = request.args.get('status')
+    ferramenta_filtro = request.args.get('ferramenta_id')
+
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        query = """
+            SELECT r.id, r.ferramenta_id, f.nome AS ferramenta_nome,
+                   r.usuario_id, u.nome AS funcionario_nome,
+                   r.escala_id, e.nome_festa AS festa_nome,
+                   r.data_retirada, r.hora_retirada, r.status, r.devolvido_em, r.criado_em
+            FROM ferramenta_reservas r
+            JOIN ferramentas f ON f.id = r.ferramenta_id
+            JOIN usuarios u ON u.id = r.usuario_id
+            LEFT JOIN escalas e ON e.id = r.escala_id
+            WHERE 1=1
+        """
+        params = []
+
+        if user['role'] != 'admin':
+            query += " AND r.usuario_id = ?"
+            params.append(user_id)
+        if status_filtro:
+            query += " AND r.status = ?"
+            params.append(status_filtro)
+        if ferramenta_filtro:
+            query += " AND r.ferramenta_id = ?"
+            params.append(int(ferramenta_filtro))
+
+        query += " ORDER BY r.criado_em DESC"
+        c.execute(query, params)
+        reservas = [dict(row) for row in c.fetchall()]
+        conn.close()
+
+        return {"reservas": reservas}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao listar reservas: {str(e)}"}, 500
 
 
 # AUTO ESCALAÇÃO DOS FUNCIONÁRIos
