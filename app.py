@@ -14,6 +14,27 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=15)
 
 jwt = JWTManager(app)
 
+ALLOWED_ORIGINS = {
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+}
+
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    if origin in ALLOWED_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Vary'] = 'Origin'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    return response
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return {"status": "ok"}, 200
+
 
 # HELPERS - PERMISSÕES     
 

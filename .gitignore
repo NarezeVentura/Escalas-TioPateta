@@ -22,6 +22,10 @@ escala.db
 *~
 .DS_Store
 
+# Frontend gerado
+front end/node_modules/
+front end/dist/
+
 # Dependências do pip
 pip-log.txt
 pip-delete-this-directory.txt

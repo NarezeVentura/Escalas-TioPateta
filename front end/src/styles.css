@@ -1,0 +1,89 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, system-ui, sans-serif;
+  background: radial-gradient(circle at top, #f7f2df, #efe6c7 42%, #e2d3a0 100%);
+  color: #2d2414;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(93, 73, 29, 0.15);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(74, 55, 16, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+.hero h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status {
+  margin: 0;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+input {
+  border: 1px solid rgba(93, 73, 29, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: #2d2414;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.error {
+  color: #8d1f1f;
+  margin-top: 12px;
+}
