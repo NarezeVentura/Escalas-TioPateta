@@ -14,6 +14,9 @@ export default function Dashboard({ user, onLogout }) {
   const [carregandoMinhasEscalas, setCarregandoMinhasEscalas] = useState(false);
   const [erroMinhasEscalas, setErroMinhasEscalas] = useState("");
   const [escalaSelecionada, setEscalaSelecionada] = useState(null);
+  const [usuarios, setUsuarios] = useState([]);
+  const [carregandoUsuarios, setCarregandoUsuarios] = useState(false);
+  const [erroUsuarios, setErroUsuarios] = useState("");
 
   const isAdmin = user?.role === "admin";
 
@@ -43,6 +46,28 @@ export default function Dashboard({ user, onLogout }) {
     }
 
     carregarMinhasEscalas();
+  }, [isAdmin, pagina]);
+
+  useEffect(() => {
+    async function carregarUsuarios() {
+      if (!isAdmin || pagina !== "usuarios") {
+        return;
+      }
+
+      setCarregandoUsuarios(true);
+      setErroUsuarios("");
+
+      try {
+        const res = await api.get("/usuarios");
+        setUsuarios(res.data.usuarios || []);
+      } catch (error) {
+        setErroUsuarios(error?.response?.data?.msg || "Não foi possível carregar os usuários.");
+      } finally {
+        setCarregandoUsuarios(false);
+      }
+    }
+
+    carregarUsuarios();
   }, [isAdmin, pagina]);
 
   async function criarFuncionario(e) {
@@ -78,6 +103,26 @@ export default function Dashboard({ user, onLogout }) {
     }
   }
 
+  async function excluirUsuario(usuario) {
+    const confirmacao = window.confirm(`Excluir o usuário ${usuario.nome}?`);
+    if (!confirmacao) {
+      return;
+    }
+
+    setMensagem("");
+    setErroUsuarios("");
+
+    try {
+      await api.delete(`/usuarios/${usuario.id}`);
+      setMensagem("Usuário excluído com sucesso.");
+
+      const res = await api.get("/usuarios");
+      setUsuarios(res.data.usuarios || []);
+    } catch (error) {
+      setErroUsuarios(error?.response?.data?.msg || "Não foi possível excluir o usuário.");
+    }
+  }
+
   return (
     <div className="container app-layout">
       <div className="card dashboard-card">
@@ -97,6 +142,7 @@ export default function Dashboard({ user, onLogout }) {
           <button onClick={() => setPagina("reservas")}>📋 Reservas</button>
           {isAdmin && <button onClick={() => setPagina("minhas-escalas")}>📌 Minhas escalas</button>}
           {isAdmin && <button onClick={() => setPagina("funcionarios")}>👥 Funcionários</button>}
+          {isAdmin && <button onClick={() => setPagina("usuarios")}>🧑‍💼 Usuários</button>}
         </div>
 
         {pagina === "funcionarios" && isAdmin && (
@@ -146,6 +192,36 @@ export default function Dashboard({ user, onLogout }) {
               </div>
             )}
           </form>
+        )}
+
+        {pagina === "usuarios" && isAdmin && (
+          <div className="section-block">
+            <h2>Usuários cadastrados</h2>
+            <p className="subtitle">Aqui você vê todos os usuários criados e pode excluir os que não precisar mais.</p>
+
+            {carregandoUsuarios ? (
+              <p>Carregando usuários...</p>
+            ) : erroUsuarios ? (
+              <p className="error info-message">{erroUsuarios}</p>
+            ) : usuarios.length === 0 ? (
+              <p className="subtitle">Nenhum usuário cadastrado.</p>
+            ) : (
+              <div className="cards-list">
+                {usuarios.map((usuario) => (
+                  <div key={usuario.id} className="card section-block">
+                    <h3>{usuario.nome}</h3>
+                    <p><strong>Email:</strong> {usuario.email}</p>
+                    <p><strong>Perfil:</strong> {usuario.role}</p>
+                    <p><strong>Criado em:</strong> {usuario.criado_em}</p>
+
+                    <button className="btn-danger" type="button" onClick={() => excluirUsuario(usuario)}>
+                      Excluir usuário
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {pagina === "minhas-escalas" && isAdmin && (

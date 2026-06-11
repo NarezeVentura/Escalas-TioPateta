@@ -259,6 +259,35 @@ def atualizar_usuario(user_id):
         return {"msg": f"Erro ao atualizar usuário: {str(e)}"}, 500
 
 
+@app.route('/api/usuarios/<int:user_id>', methods=['DELETE'])
+@role_required('admin')
+def excluir_usuario(user_id):
+    """Excluir usuário cadastrado (admin only)"""
+    try:
+        admin = get_current_user()
+
+        if admin['id'] == user_id:
+            return {"msg": "Você não pode excluir a sua própria conta"}, 400
+
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("SELECT id, nome, role FROM usuarios WHERE id = ?", (user_id,))
+        usuario = c.fetchone()
+        if not usuario:
+            conn.close()
+            return {"msg": "Usuário não encontrado"}, 404
+
+        c.execute("DELETE FROM usuarios WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+
+        return {"msg": f"Usuário '{usuario['nome']}' excluído com sucesso"}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao excluir usuário: {str(e)}"}, 500
+
+
 
 # GESTÃO DAS ESCALAS - ADICIONAR, EDITAR E EXCLUIR 
 
