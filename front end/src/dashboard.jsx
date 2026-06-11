@@ -94,6 +94,7 @@ export default function Dashboard({ user, onLogout }) {
       setCredenciaisCriadas({
         nome: funcionarioForm.nome.trim(),
         email: funcionarioForm.email.trim(),
+        senha: funcionarioForm.senha,
       });
       setFuncionarioForm({ nome: "", email: "", senha: "" });
       setMensagem("Funcionário criado e salvo no banco com sucesso.");
@@ -209,6 +210,7 @@ export default function Dashboard({ user, onLogout }) {
               <div className="credentials-box">
                 <p><strong>Nome:</strong> {credenciaisCriadas.nome}</p>
                 <p><strong>Email:</strong> {credenciaisCriadas.email}</p>
+                <p><strong>Senha:</strong> {credenciaisCriadas.senha}</p>
               </div>
             )}
           </form>
@@ -248,9 +250,9 @@ export default function Dashboard({ user, onLogout }) {
                     </label>
 
                     {senhasUsuarios[usuario.id] && (
-                      <p className="info-message error">
-                        Senha atual na tela: {senhasUsuarios[usuario.id]}
-                      </p>
+                      <div className="credentials-box">
+                        <p><strong>Senha visível agora:</strong> {senhasUsuarios[usuario.id]}</p>
+                      </div>
                     )}
 
                     <div className="buttons buttons-row">
