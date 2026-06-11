@@ -17,6 +17,7 @@ export default function Dashboard({ user, onLogout }) {
   const [usuarios, setUsuarios] = useState([]);
   const [carregandoUsuarios, setCarregandoUsuarios] = useState(false);
   const [erroUsuarios, setErroUsuarios] = useState("");
+  const [senhasUsuarios, setSenhasUsuarios] = useState({});
 
   const isAdmin = user?.role === "admin";
 
@@ -123,6 +124,25 @@ export default function Dashboard({ user, onLogout }) {
     }
   }
 
+  async function redefinirSenha(usuario) {
+    const senha = senhasUsuarios[usuario.id] || "";
+
+    setMensagem("");
+    setErroUsuarios("");
+
+    try {
+      const resposta = await api.post(`/usuarios/${usuario.id}/senha`, senha.trim() ? { senha } : {});
+      setMensagem(`Senha de ${resposta.data.nome} redefinida com sucesso.`);
+
+      setSenhasUsuarios((atual) => ({
+        ...atual,
+        [usuario.id]: resposta.data.senha,
+      }));
+    } catch (error) {
+      setErroUsuarios(error?.response?.data?.msg || "Não foi possível redefinir a senha.");
+    }
+  }
+
   return (
     <div className="container app-layout">
       <div className="card dashboard-card">
@@ -214,9 +234,34 @@ export default function Dashboard({ user, onLogout }) {
                     <p><strong>Perfil:</strong> {usuario.role}</p>
                     <p><strong>Criado em:</strong> {usuario.criado_em}</p>
 
-                    <button className="btn-danger" type="button" onClick={() => excluirUsuario(usuario)}>
-                      Excluir usuário
-                    </button>
+                    <label>
+                      Nova senha
+                      <input
+                        type="text"
+                        value={senhasUsuarios[usuario.id] || ""}
+                        onChange={(e) => setSenhasUsuarios({
+                          ...senhasUsuarios,
+                          [usuario.id]: e.target.value,
+                        })}
+                        placeholder="Deixe em branco para gerar uma senha"
+                      />
+                    </label>
+
+                    {senhasUsuarios[usuario.id] && (
+                      <p className="info-message error">
+                        Senha atual na tela: {senhasUsuarios[usuario.id]}
+                      </p>
+                    )}
+
+                    <div className="buttons buttons-row">
+                      <button className="btn-secondary" type="button" onClick={() => redefinirSenha(usuario)}>
+                        Redefinir senha
+                      </button>
+
+                      <button className="btn-danger" type="button" onClick={() => excluirUsuario(usuario)}>
+                        Excluir usuário
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

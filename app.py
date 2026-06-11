@@ -3,6 +3,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import sqlite3
+import secrets
 from functools import wraps
 from database import init_db, get_connection
 #acima, uso de apiREST feita com flask e jwt
@@ -286,6 +287,40 @@ def excluir_usuario(user_id):
 
     except Exception as e:
         return {"msg": f"Erro ao excluir usuário: {str(e)}"}, 500
+
+
+@app.route('/api/usuarios/<int:user_id>/senha', methods=['POST'])
+@role_required('admin')
+def redefinir_senha_usuario(user_id):
+    """Redefinir senha de um usuário e devolver a nova senha para visualização imediata."""
+    data = request.get_json() or {}
+
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("SELECT id, nome FROM usuarios WHERE id = ?", (user_id,))
+        usuario = c.fetchone()
+        if not usuario:
+            conn.close()
+            return {"msg": "Usuário não encontrado"}, 404
+
+        nova_senha = data.get("senha") or secrets.token_urlsafe(8)
+        senha_hash = generate_password_hash(nova_senha)
+
+        c.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (senha_hash, user_id))
+        conn.commit()
+        conn.close()
+
+        return {
+            "msg": "Senha redefinida com sucesso",
+            "usuario_id": usuario["id"],
+            "nome": usuario["nome"],
+            "senha": nova_senha,
+        }, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao redefinir senha: {str(e)}"}, 500
 
 
 
