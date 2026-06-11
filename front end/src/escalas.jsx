@@ -10,7 +10,6 @@ const estadoInicial = {
   horario_fim: "",
   duracao_horas: "",
   produto: "",
-  atracoes: "",
   total_vagas: "2",
   status: "aberta",
 };
@@ -61,7 +60,6 @@ export default function Escalas({ user }) {
       horario_fim: escala.horario_fim || "",
       duracao_horas: escala.duracao_horas ?? "",
       produto: escala.produto || "",
-      atracoes: escala.atracoes || "",
       total_vagas: escala.total_vagas ?? "2",
       status: escala.status || "aberta",
     });
@@ -178,38 +176,31 @@ export default function Escalas({ user }) {
             </label>
             <label>
               Data
-              <input type="date" value={form.data_festa} onChange={(e) => setForm({ ...form, data_festa: e.target.value })} />
+              <input type="text" value={form.data_festa} onChange={(e) => setForm({ ...form, data_festa: e.target.value })} />
             </label>
             <label>
               Início
-              <input type="time" value={form.horario_inicio} onChange={(e) => setForm({ ...form, horario_inicio: e.target.value })} />
+              <input type="text" value={form.horario_inicio} onChange={(e) => setForm({ ...form, horario_inicio: e.target.value })} />
             </label>
             <label>
               Fim
-              <input type="time" value={form.horario_fim} onChange={(e) => setForm({ ...form, horario_fim: e.target.value })} />
+              <input type="text" value={form.horario_fim} onChange={(e) => setForm({ ...form, horario_fim: e.target.value })} />
             </label>
             <label>
               Duração
-              <input type="number" step="0.5" value={form.duracao_horas} onChange={(e) => setForm({ ...form, duracao_horas: e.target.value })} />
+              <input type="text" value={form.duracao_horas} onChange={(e) => setForm({ ...form, duracao_horas: e.target.value })} />
             </label>
             <label>
               Produto
               <input value={form.produto} onChange={(e) => setForm({ ...form, produto: e.target.value })} />
             </label>
-            <label className="span-2">
-              Atrações
-              <textarea rows="3" value={form.atracoes} onChange={(e) => setForm({ ...form, atracoes: e.target.value })} />
-            </label>
             <label>
               Vagas
-              <input type="number" min="1" value={form.total_vagas} onChange={(e) => setForm({ ...form, total_vagas: e.target.value })} />
+              <input type="text" value={form.total_vagas} onChange={(e) => setForm({ ...form, total_vagas: e.target.value })} />
             </label>
             <label>
               Status
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="aberta">aberta</option>
-                <option value="fechada">fechada</option>
-              </select>
+              <input type="text" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} />
             </label>
           </div>
 
@@ -261,7 +252,6 @@ export default function Escalas({ user }) {
           <p><strong>Data:</strong> {selecionada.data_festa}</p>
           <p><strong>Horário:</strong> {selecionada.horario_inicio} - {selecionada.horario_fim}</p>
           <p><strong>Produto:</strong> {selecionada.produto}</p>
-          <p><strong>Atrações:</strong> {selecionada.atracoes || "Sem atrações cadastradas"}</p>
           <p><strong>Vagas:</strong> {selecionada.vagas_preenchidas} / {selecionada.total_vagas}</p>
 
           <div className="vagas-lista">
