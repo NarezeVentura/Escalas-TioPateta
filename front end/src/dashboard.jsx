@@ -133,7 +133,7 @@ export default function Dashboard({ user, onLogout }) {
 
     try {
       const resposta = await api.post(`/usuarios/${usuario.id}/senha`, senha.trim() ? { senha } : {});
-      setMensagem(`Senha de ${resposta.data.nome} redefinida com sucesso.`);
+      setMensagem("Senha redefinida!");
 
       setSenhasUsuarios((atual) => ({
         ...atual,

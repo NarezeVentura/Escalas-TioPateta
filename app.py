@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import sqlite3
 import secrets
+import threading
+import time
 from functools import wraps
 from database import init_db, get_connection
 #acima, uso de apiREST feita com flask e jwt
@@ -1057,41 +1059,94 @@ def admin_atribuir_vaga(escala_id, vaga_id):
 
 
 
-# LIMPEZA AUTOMÁTICA (cada 30 DIAS)
+# LIMPEZA AUTOMÁTICA
+
+
+_limpeza_lock = threading.Lock()
+_ultima_limpeza_agendada = None
+_INTERVALO_LIMPEZA_SEGUNDOS = 24 * 60 * 60
+
+
+def limpar_registros_antigos():
+    """Remove escalas com mais de 15 dias de criação e reservas devolvidas há mais de 7 dias."""
+    conn = get_connection()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id
+        FROM escalas
+        WHERE datetime(criado_em) <= datetime('now', '-15 days')
+    """)
+    escalas_antigas = [row['id'] for row in c.fetchall()]
+
+    for escala_id in escalas_antigas:
+        c.execute("DELETE FROM escalas WHERE id = ?", (escala_id,))
+
+    c.execute("""
+        SELECT id
+        FROM ferramenta_reservas
+        WHERE status = 'devolvido'
+          AND devolvido_em IS NOT NULL
+          AND datetime(devolvido_em) <= datetime('now', '-7 days')
+    """)
+    reservas_antigas = [row['id'] for row in c.fetchall()]
+
+    for reserva_id in reservas_antigas:
+        c.execute("DELETE FROM ferramenta_reservas WHERE id = ?", (reserva_id,))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "escalas_removidas": len(escalas_antigas),
+        "reservas_removidas": len(reservas_antigas),
+    }
+
+
+def executar_limpeza_agendada(forcar=False):
+    """Executa a limpeza no máximo uma vez por dia, salvo quando forçada."""
+    global _ultima_limpeza_agendada
+
+    with _limpeza_lock:
+        agora = datetime.now()
+        if not forcar and _ultima_limpeza_agendada is not None:
+            if (agora - _ultima_limpeza_agendada).total_seconds() < _INTERVALO_LIMPEZA_SEGUNDOS:
+                return None
+
+        resultado = limpar_registros_antigos()
+        _ultima_limpeza_agendada = agora
+        return resultado
+
+
+def ciclo_limpeza_automatica():
+    """Mantém a limpeza rodando em segundo plano enquanto o servidor estiver ativo."""
+    while True:
+        try:
+            executar_limpeza_agendada(forcar=True)
+        except Exception as e:
+            print(f"Erro na limpeza automática: {str(e)}")
+
+        time.sleep(_INTERVALO_LIMPEZA_SEGUNDOS)
 
 
 @app.route('/api/admin/limpeza-automatica', methods=['POST'])
 @role_required('admin')
 def executar_limpeza_automatica():
-    """Executar limpeza de escalas com mais de 30 dias (admin only)"""
+    """Executar limpeza automática de escalas e reservas (admin only)"""
     try:
-        user_id = get_current_user_id()
-        conn = get_connection()
-        c = conn.cursor()
-        
-        # Calcular data limite (30 dias atrás)
-        data_limite = (datetime.now() - timedelta(days=30)).date().isoformat()
-        
-        # Encontrar escalas antigas
-        c.execute("""
-            SELECT id FROM escalas 
-            WHERE data_festa < ?
-        """, (data_limite,))
-        
-        escalas_antigas = [row['id'] for row in c.fetchall()]
-        
-        # Deletar vagas e escalas antigas
-        for escala_id in escalas_antigas:
-            c.execute("DELETE FROM escala_vagas WHERE escala_id = ?", (escala_id,))
-            c.execute("DELETE FROM escalas WHERE id = ?", (escala_id,))
-        
-        conn.commit()
-        conn.close()
+        resultado = executar_limpeza_agendada(forcar=True) or {
+            "escalas_removidas": 0,
+            "reservas_removidas": 0,
+        }
         
         return {
             "msg": "Limpeza automática executada com sucesso",
-            "escalas_removidas": len(escalas_antigas),
-            "data_limite": data_limite
+            "escalas_removidas": resultado["escalas_removidas"],
+            "reservas_removidas": resultado["reservas_removidas"],
+            "regras": {
+                "escalas": "excluir após 15 dias da criação",
+                "reservas": "excluir 7 dias após devolução",
+            }
         }, 200
     
     except Exception as e:
@@ -1116,6 +1171,7 @@ def erro_interno(error):
 
 if __name__ == '__main__':
     init_db()
+    threading.Thread(target=ciclo_limpeza_automatica, daemon=True).start()
     print("Banco de dados inicializado")
     print("Iniciando o servidor Flask...")
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)

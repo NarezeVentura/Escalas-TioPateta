@@ -3,6 +3,7 @@ import api from './api';
 
 export default function Login({ onLogin }) {
   const [fields, setFields] = useState({ email: '', senha: '' });
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit(e) {
@@ -38,13 +39,23 @@ export default function Login({ onLogin }) {
           <label>
             Senha
             <input
-              type="password"
+              type={mostrarSenha ? 'text' : 'password'}
               value={fields.senha}
               onChange={(e) => setFields({ ...fields, senha: e.target.value })}
               placeholder="••••••••"
               required
             />
           </label>
+
+          <label className="checkbox-line">
+            <input
+              type="checkbox"
+              checked={mostrarSenha}
+              onChange={(e) => setMostrarSenha(e.target.checked)}
+            />
+            Mostrar senha
+          </label>
+
           <button type="submit" className="btn-primary">Entrar</button>
         </form>
 
