@@ -29,6 +29,7 @@ export default function Dashboard({ user, onLogout }) {
   const [minhasEscalas, setMinhasEscalas] = useState([]);
   const [carregandoMinhasEscalas, setCarregandoMinhasEscalas] = useState(false);
   const [erroMinhasEscalas, setErroMinhasEscalas] = useState("");
+  const [escalaSelecionada, setEscalaSelecionada] = useState(null);
 
   const isAdmin = user?.role === "admin";
 
@@ -154,25 +155,55 @@ export default function Dashboard({ user, onLogout }) {
             ) : minhasEscalas.length === 0 ? (
               <p className="subtitle">Nenhuma escala criada por você ainda.</p>
             ) : (
-              <div className="cards-list">
-                {minhasEscalas.map((escala) => (
-                  <div key={escala.id} className="card section-block">
-                    <h3>{escala.nome_festa}</h3>
-                    <p><strong>Local:</strong> {escala.local_nome}</p>
-                    <p><strong>Data:</strong> {escala.data_festa}</p>
-                    <p><strong>Status:</strong> {escala.status}</p>
-                    <p><strong>Atribuídos:</strong> {escala.total_atribuidos} de {escala.total_vagas}</p>
+              <div className="section-grid-admin">
+                <div className="cards-list">
+                  {minhasEscalas.map((escala) => (
+                    <div key={escala.id} className="card section-block">
+                      <h3>{escala.nome_festa}</h3>
+                      <p><strong>Local:</strong> {escala.local_nome}</p>
+                      <p><strong>Data:</strong> {escala.data_festa}</p>
+                      <p><strong>Status:</strong> {escala.status}</p>
+                      <p><strong>Atribuídos:</strong> {escala.total_atribuidos} de {escala.total_vagas}</p>
+
+                      <button className="btn-primary" type="button" onClick={() => setEscalaSelecionada(escala)}>
+                        Ver detalhes
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {escalaSelecionada ? (
+                  <div className="card section-block detail-box">
+                    <h2>{escalaSelecionada.nome_festa}</h2>
+                    <p><strong>Local:</strong> {escalaSelecionada.local_nome}</p>
+                    <p><strong>Endereço:</strong> {escalaSelecionada.local_endereco}</p>
+                    <p><strong>Data:</strong> {escalaSelecionada.data_festa}</p>
+                    <p><strong>Horário:</strong> {escalaSelecionada.horario_inicio} - {escalaSelecionada.horario_fim}</p>
+                    <p><strong>Produto:</strong> {escalaSelecionada.produto}</p>
+                    <p><strong>Status:</strong> {escalaSelecionada.status}</p>
+                    <p><strong>Vagas:</strong> {escalaSelecionada.total_atribuidos} / {escalaSelecionada.total_vagas}</p>
 
                     <div className="vagas-lista">
-                      {escala.vagas.map((vaga) => (
+                      {escalaSelecionada.vagas.map((vaga) => (
                         <div key={vaga.vaga_id} className="vaga-item">
-                          <strong>{vaga.nome || "Vaga aberta"}</strong>
+                          <div>
+                            <strong>{vaga.nome || "Vaga aberta"}</strong>
+                            <p className="subtitle">{vaga.email || "Sem email"}</p>
+                          </div>
                           <span>{vaga.confirmado_em ? "Confirmado" : "Livre"}</span>
                         </div>
                       ))}
                     </div>
+
+                    <button className="btn-secondary" type="button" onClick={() => setEscalaSelecionada(null)}>
+                      Fechar detalhes
+                    </button>
                   </div>
-                ))}
+                ) : (
+                  <div className="card section-block">
+                    <p className="subtitle">Selecione uma escala para ver os detalhes e os funcionários atribuídos.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
