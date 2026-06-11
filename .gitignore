@@ -36,3 +36,9 @@ pip-delete-this-directory.txt
 
 # Logs
 *.log
+
+#launch.json
+
+.vscode/launch.json
+
+
