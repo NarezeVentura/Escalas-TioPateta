@@ -7,15 +7,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
 
-  // Verifica se já há sessão ativa ao carregar
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       setChecking(false);
       return;
     }
-    api.get('/auth/me')
-      .then((res) => setUser(res.data.user))
+    api.get('/usuarios/me')
+      .then((res) => setUser(res.data))
       .catch(() => localStorage.removeItem('token'))
       .finally(() => setChecking(false));
   }, []);
@@ -45,3 +44,5 @@ export default function App() {
 
   return <Login onLogin={handleLogin} />;
 }
+
+//  
