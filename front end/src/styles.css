@@ -1,89 +1,167 @@
-:root {
-  color-scheme: light;
-  font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, #f7f2df, #efe6c7 42%, #e2d3a0 100%);
-  color: #2d2414;
-}
-
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 body {
-  margin: 0;
+  background: linear-gradient(135deg, #1a0933, #2e1065, #4c1d95);
   min-height: 100vh;
 }
 
-button,
-input {
-  font: inherit;
-}
-
-.page {
+/* ── Layout ── */
+.container {
   min-height: 100vh;
-  padding: 32px;
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  align-items: start;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 16px;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(93, 73, 29, 0.15);
-  border-radius: 24px;
-  padding: 24px;
-  box-shadow: 0 20px 50px rgba(74, 55, 16, 0.14);
-  backdrop-filter: blur(10px);
+  width: 420px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border-radius: 25px;
+  padding: 35px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
 }
 
-.hero h1 {
-  margin: 0 0 12px;
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  line-height: 1;
+/* ── Logo / cabeçalho ── */
+.logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 20px;
 }
 
-.eyebrow {
-  margin: 0 0 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.75rem;
-  font-weight: 700;
+.logo-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.4);
+  border: 2px solid rgba(147, 51, 234, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  margin: 0 auto 20px;
 }
 
+.card h1 {
+  margin-bottom: 10px;
+  font-size: 1.6rem;
+}
+
+.card .subtitle {
+  color: #d4d4d4;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+/* ── Status ── */
 .status {
-  margin: 0;
+  font-size: 0.8rem;
+  color: #c4b5fd;
+  margin-bottom: 24px;
+  min-height: 1.2em;
 }
 
+/* ── Botões do dashboard ── */
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.buttons button {
+  padding: 15px;
+  border: none;
+  border-radius: 15px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+  background: #7c3aed;
+  color: white;
+  transition: 0.3s;
+}
+
+.buttons button:hover {
+  transform: translateY(-3px);
+  background: #9333ea;
+}
+
+/* ── Formulário de login ── */
 .form {
   display: grid;
   gap: 14px;
+  text-align: left;
 }
 
-label {
+.form label {
   display: grid;
   gap: 6px;
   font-weight: 600;
+  font-size: 0.9rem;
+  color: #e9d5ff;
 }
 
-input {
-  border: 1px solid rgba(93, 73, 29, 0.2);
+.form input {
+  border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-button {
-  border: 0;
+.form input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.form input:focus {
+  border-color: #7c3aed;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 13px;
+  border: none;
   border-radius: 12px;
-  padding: 12px 16px;
-  background: #2d2414;
-  color: white;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: bold;
   cursor: pointer;
+  background: #7c3aed;
+  color: white;
+  transition: 0.3s;
+  margin-top: 4px;
+}
+
+.btn-primary:hover {
+  background: #9333ea;
+  transform: translateY(-2px);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #c4b5fd;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 16px;
+  text-decoration: underline;
+  font-family: inherit;
 }
 
 .error {
-  color: #8d1f1f;
-  margin-top: 12px;
+  color: #fca5a5;
+  font-size: 0.85rem;
+  margin-top: 10px;
+  text-align: center;
 }
