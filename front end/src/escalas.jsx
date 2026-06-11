@@ -30,7 +30,7 @@ export default function Escalas({ user }) {
     setErro("");
 
     try {
-      const url = isAdmin ? "/escalas?futuras=false" : "/escalas";
+      const url = "/escalas?futuras=false";
       const res = await api.get(url);
       setEscalas(res.data.escalas || []);
     } catch (error) {
