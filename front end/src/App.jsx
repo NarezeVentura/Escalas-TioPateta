@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from './api';
-import Login from './Login';
-import Dashboard from './Dashboard';
+import Login from './login';
+import Dashboard from './dashboard';
 
 export default function App() {
   const [user, setUser] = useState(null);
