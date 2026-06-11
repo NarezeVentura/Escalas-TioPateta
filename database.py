@@ -42,6 +42,7 @@ def init_db():
             atracoes        TEXT,
             total_vagas     INTEGER NOT NULL DEFAULT 2,
             status          TEXT    NOT NULL DEFAULT 'aberta',
+            criado_por      INTEGER,
             criado_em       TEXT    NOT NULL DEFAULT (datetime('now')),
             atualizado_em   TEXT    NOT NULL DEFAULT (datetime('now'))
         )
@@ -91,6 +92,8 @@ def init_db():
     
     # Inserir ferramentas iniciais padrão
     inserir_ferramentas_iniciais(conn)
+
+    garantir_coluna_criado_por(conn)
     
     conn.close()
     print("Banco de dados inicializado.")
@@ -155,3 +158,15 @@ def criar_admin_inicial(conn):
     print("Administrador inicial criado!")
     print(f"Email: {email_admin}")
     print(f"Senha: {senha}")
+
+
+def garantir_coluna_criado_por(conn):
+    """Garante que a tabela de escalas tenha a coluna de criador."""
+    c = conn.cursor()
+    c.execute("PRAGMA table_info(escalas)")
+    colunas = {row[1] for row in c.fetchall()}
+
+    if "criado_por" not in colunas:
+        c.execute("ALTER TABLE escalas ADD COLUMN criado_por INTEGER")
+        conn.commit()
+        print("Coluna criado_por adicionada à tabela escalas.")

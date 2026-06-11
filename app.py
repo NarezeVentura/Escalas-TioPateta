@@ -45,7 +45,7 @@ def role_required(role):
         @wraps(fn)
         @jwt_required()
         def wrapper(*args, **kwargs):
-            user_id = get_jwt_identity()
+            user_id = int(get_jwt_identity())
             conn = get_connection()
             c = conn.cursor()
             c.execute("SELECT role FROM usuarios WHERE id = ?", (user_id,))
@@ -61,13 +61,31 @@ def role_required(role):
 
 def get_current_user():
     """Obtém o usuário atual da sessão JWT"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     conn = get_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,))
     user = c.fetchone()
     conn.close()
     return dict(user) if user else None
+
+
+def get_current_user_id():
+    return int(get_jwt_identity())
+
+
+def garantir_coluna_criado_por():
+    """Cria a coluna criado_por caso o banco atual ainda não tenha a migração."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("PRAGMA table_info(escalas)")
+    colunas = {row[1] for row in c.fetchall()}
+
+    if "criado_por" not in colunas:
+        c.execute("ALTER TABLE escalas ADD COLUMN criado_por INTEGER")
+        conn.commit()
+
+    conn.close()
     
 #AUTENTICAÇÃO
 
@@ -127,7 +145,7 @@ def login():
         if not user or not check_password_hash(user['senha_hash'], data['senha']):
             return {"msg": "Email ou senha incorretos"}, 401
         
-        access_token = create_access_token(identity=user['id'])
+        access_token = create_access_token(identity=str(user['id']))
         
         return {
             "access_token": access_token,
@@ -261,14 +279,16 @@ def criar_escala():
         return {"msg": "Status inválido. Use 'aberta' ou 'fechada'"}, 400
     
     try:
+        current_user = get_current_user()
+        garantir_coluna_criado_por()
         conn = get_connection()
         c = conn.cursor()
         
         c.execute("""
             INSERT INTO escalas 
             (nome_festa, local_nome, local_endereco, data_festa, horario_inicio, 
-             horario_fim, duracao_horas, produto, atracoes, total_vagas, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             horario_fim, duracao_horas, produto, atracoes, total_vagas, status, criado_por)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data['nome_festa'],
             data['local_nome'],
@@ -280,7 +300,8 @@ def criar_escala():
             data['produto'],
             data.get('atracoes', ''),
             data['total_vagas'],
-            status
+            status,
+            current_user['id']
         ))
         
         escala_id = c.lastrowid
@@ -292,10 +313,55 @@ def criar_escala():
         conn.commit()
         conn.close()
         
-        return {"msg": "Escala criada com sucesso", "escala_id": escala_id}, 201
+        return {"msg": "Escala postada com sucesso", "escala_id": escala_id}, 201
     
     except Exception as e:
         return {"msg": f"Erro ao criar escala: {str(e)}"}, 500
+
+
+@app.route('/api/admin/minhas-escalas', methods=['GET'])
+@role_required('admin')
+def listar_escalas_do_admin():
+    """Listar escalas criadas pelo admin logado com funcionários atribuídos."""
+    try:
+        admin = get_current_user()
+
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT *
+            FROM escalas
+            WHERE criado_por = ?
+            ORDER BY criado_em DESC
+        """, (admin['id'],))
+        escalas = [dict(row) for row in c.fetchall()]
+
+        escalas_com_vagas = []
+        for escala in escalas:
+            c.execute("""
+                SELECT ev.id as vaga_id, ev.usuario_id, ev.confirmado_em,
+                       u.nome, u.email
+                FROM escala_vagas ev
+                LEFT JOIN usuarios u ON u.id = ev.usuario_id
+                WHERE ev.escala_id = ?
+                ORDER BY ev.id
+            """, (escala['id'],))
+            vagas = [dict(row) for row in c.fetchall()]
+
+            escalas_com_vagas.append({
+                **escala,
+                "vagas": vagas,
+                "funcionarios_atribuidos": [vaga for vaga in vagas if vaga['usuario_id'] is not None],
+                "total_atribuidos": sum(1 for vaga in vagas if vaga['usuario_id'] is not None),
+                "total_livres": sum(1 for vaga in vagas if vaga['usuario_id'] is None),
+            })
+
+        conn.close()
+        return {"escalas": escalas_com_vagas}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao listar escalas do admin: {str(e)}"}, 500
 
 @app.route('/api/escalas', methods=['GET'])
 @jwt_required()
@@ -547,7 +613,7 @@ def atualizar_ferramenta(ferramenta_id):
 @app.route('/api/ferramentas/<int:ferramenta_id>/reservar', methods=['POST'])
 @jwt_required()
 def reservar_ferramenta(ferramenta_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     user = get_current_user()
     data = request.get_json() or {}
 
@@ -604,7 +670,7 @@ def reservar_ferramenta(ferramenta_id):
 @app.route('/api/reservas/<int:reserva_id>/devolver', methods=['POST'])
 @jwt_required()
 def devolver_ferramenta(reserva_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     user = get_current_user()
 
     try:
@@ -643,7 +709,7 @@ def devolver_ferramenta(reserva_id):
 @app.route('/api/reservas', methods=['GET'])
 @jwt_required()
 def listar_reservas():
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     user = get_current_user()
     status_filtro = request.args.get('status')
     ferramenta_filtro = request.args.get('ferramenta_id')
@@ -692,7 +758,7 @@ def listar_reservas():
 @jwt_required()
 def funcionario_se_inscrever(escala_id):
     """Funcionário se escalar em uma escala"""
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     user = get_current_user()
     
     # Apenas funcionários podem se inscrever
@@ -757,7 +823,7 @@ def funcionario_se_inscrever(escala_id):
 @jwt_required()
 def funcionario_cancelar_inscricao(escala_id):
     """Funcionário cancelar sua inscrição em uma escala"""
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     
     try:
         conn = get_connection()
@@ -806,6 +872,7 @@ def funcionario_cancelar_inscricao(escala_id):
 def listar_vagas_escala(escala_id):
     """Listar todas as vagas de uma escala"""
     try:
+        user_id = get_current_user_id()
         conn = get_connection()
         c = conn.cursor()
         
@@ -874,6 +941,7 @@ def admin_atribuir_vaga(escala_id, vaga_id):
 def executar_limpeza_automatica():
     """Executar limpeza de escalas com mais de 30 dias (admin only)"""
     try:
+        user_id = get_current_user_id()
         conn = get_connection()
         c = conn.cursor()
         

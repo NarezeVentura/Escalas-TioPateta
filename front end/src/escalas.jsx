@@ -74,6 +74,7 @@ export default function Escalas({ user }) {
       ...form,
       duracao_horas: Number(form.duracao_horas),
       total_vagas: Number(form.total_vagas),
+      status: editandoId ? form.status : "aberta",
     };
 
     try {
@@ -82,7 +83,7 @@ export default function Escalas({ user }) {
         setMensagem("Escala atualizada com sucesso.");
       } else {
         await api.post("/escalas", payload);
-        setMensagem("Escala criada com sucesso.");
+        setMensagem("Escala postada com sucesso e status definido como aberta.");
       }
 
       limparFormulario();
