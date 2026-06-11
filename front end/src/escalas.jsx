@@ -154,6 +154,7 @@ export default function Escalas({ user }) {
   const inscritoNaSelecionada = selecionada
     ? (selecionada.vagas || []).some((vaga) => vaga.usuario_id === user?.id)
     : false;
+  const escalaAberta = selecionada?.status === "aberta";
 
   return (
     <div className="section-block">
@@ -234,9 +235,15 @@ export default function Escalas({ user }) {
                     <button className="btn-danger" type="button" onClick={() => excluirEscala(escala.id)}>Excluir</button>
                   </>
                 ) : (
-                  <button className="btn-primary" type="button" onClick={() => abrirDetalhes(escala.id)}>
-                    Confirmar presença
-                  </button>
+                  escala.status === "aberta" ? (
+                    <button className="btn-primary" type="button" onClick={() => abrirDetalhes(escala.id)}>
+                      Confirmar presença
+                    </button>
+                  ) : (
+                    <button className="btn-secondary" type="button" disabled>
+                      Presença bloqueada
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -252,6 +259,7 @@ export default function Escalas({ user }) {
           <p><strong>Data:</strong> {selecionada.data_festa}</p>
           <p><strong>Horário:</strong> {selecionada.horario_inicio} - {selecionada.horario_fim}</p>
           <p><strong>Produto:</strong> {selecionada.produto}</p>
+          <p><strong>Status:</strong> {selecionada.status}</p>
           <p><strong>Vagas:</strong> {selecionada.vagas_preenchidas} / {selecionada.total_vagas}</p>
 
           <div className="vagas-lista">
@@ -263,10 +271,14 @@ export default function Escalas({ user }) {
             ))}
           </div>
 
-          {!isAdmin && (
+          {!isAdmin && escalaAberta && (
             <button className="btn-primary" type="button" onClick={confirmarPresenca}>
               {inscritoNaSelecionada ? "Cancelar presença" : "Confirmar presença"}
             </button>
+          )}
+
+          {!isAdmin && !escalaAberta && (
+            <p className="error info-message">Esta escala está fechada. Não é possível alterar a presença.</p>
           )}
         </div>
       )}

@@ -255,6 +255,10 @@ def criar_escala():
     
     if not all(campo in data for campo in campos_obrigatorios):
         return {"msg": f"Campos obrigatórios: {', '.join(campos_obrigatorios)}"}, 400
+
+    status = data.get('status', 'aberta')
+    if status not in ['aberta', 'fechada']:
+        return {"msg": "Status inválido. Use 'aberta' ou 'fechada'"}, 400
     
     try:
         conn = get_connection()
@@ -276,7 +280,7 @@ def criar_escala():
             data['produto'],
             data.get('atracoes', ''),
             data['total_vagas'],
-            'aberta'
+            status
         ))
         
         escala_id = c.lastrowid
@@ -758,6 +762,17 @@ def funcionario_cancelar_inscricao(escala_id):
     try:
         conn = get_connection()
         c = conn.cursor()
+
+        c.execute("SELECT status FROM escalas WHERE id = ?", (escala_id,))
+        escala = c.fetchone()
+
+        if not escala:
+            conn.close()
+            return {"msg": "Escala não encontrada"}, 404
+
+        if escala['status'] != 'aberta':
+            conn.close()
+            return {"msg": "Escala não está aberta para alterar presença"}, 409
         
         # Encontrar a vaga do funcionário nesta escala
         c.execute("""
