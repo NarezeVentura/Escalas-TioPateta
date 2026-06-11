@@ -550,6 +550,42 @@ def listar_ferramentas():
         return {"msg": f"Erro ao listar ferramentas: {str(e)}"}, 500
 
 
+@app.route('/api/ferramentas', methods=['POST'])
+@role_required('admin')
+def criar_ferramenta():
+    """Cadastrar uma nova ferramenta (admin only)"""
+    data = request.get_json() or {}
+
+    if not data.get('nome'):
+        return {"msg": "Nome é obrigatório"}, 400
+
+    try:
+        quantidade_total = int(data.get('quantidade_total', 0))
+        if quantidade_total < 0:
+            return {"msg": "quantidade_total deve ser maior ou igual a 0"}, 400
+
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO ferramentas (nome, descricao, quantidade_total)
+            VALUES (?, ?, ?)
+        """, (
+            data['nome'],
+            data.get('descricao', ''),
+            quantidade_total,
+        ))
+        ferramenta_id = c.lastrowid
+        conn.commit()
+        conn.close()
+
+        return {"msg": "Ferramenta cadastrada com sucesso", "ferramenta_id": ferramenta_id}, 201
+
+    except sqlite3.IntegrityError:
+        return {"msg": "Já existe uma ferramenta com esse nome"}, 409
+    except Exception as e:
+        return {"msg": f"Erro ao cadastrar ferramenta: {str(e)}"}, 500
+
+
 @app.route('/api/ferramentas/<int:ferramenta_id>', methods=['PUT'])
 @role_required('admin')
 def atualizar_ferramenta(ferramenta_id):
@@ -606,6 +642,30 @@ def atualizar_ferramenta(ferramenta_id):
 
     except Exception as e:
         return {"msg": f"Erro ao atualizar quantidade: {str(e)}"}, 500
+
+
+@app.route('/api/ferramentas/<int:ferramenta_id>', methods=['DELETE'])
+@role_required('admin')
+def excluir_ferramenta(ferramenta_id):
+    """Excluir ferramenta (admin only)"""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+
+        c.execute("SELECT id, nome FROM ferramentas WHERE id = ?", (ferramenta_id,))
+        ferramenta = c.fetchone()
+        if not ferramenta:
+            conn.close()
+            return {"msg": "Ferramenta não encontrada"}, 404
+
+        c.execute("DELETE FROM ferramentas WHERE id = ?", (ferramenta_id,))
+        conn.commit()
+        conn.close()
+
+        return {"msg": f"Ferramenta '{ferramenta['nome']}' excluída com sucesso"}, 200
+
+    except Exception as e:
+        return {"msg": f"Erro ao excluir ferramenta: {str(e)}"}, 500
     
 
     #FAZER RESERVAS DE FERRAMENTAS

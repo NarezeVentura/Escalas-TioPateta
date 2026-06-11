@@ -4,25 +4,9 @@ import Escalas from "./escalas";
 import Ferramentas from "./Ferramentas";
 import Reservas from "./reservas";
 
-function criarCredenciais(nome) {
-  const slug = nome
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.+|\.+$/g, "") || "funcionario";
-
-  const sufixo = Math.random().toString(36).slice(2, 7);
-  const email = `${slug}.${sufixo}@tiopateta.local`;
-  const senha = `${Math.random().toString(36).slice(2, 10)}A1!`;
-
-  return { email, senha };
-}
-
 export default function Dashboard({ user, onLogout }) {
   const [pagina, setPagina] = useState("escalas");
-  const [nomeFuncionario, setNomeFuncionario] = useState("");
+  const [funcionarioForm, setFuncionarioForm] = useState({ nome: "", email: "", senha: "" });
   const [criandoFuncionario, setCriandoFuncionario] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [credenciaisCriadas, setCredenciaisCriadas] = useState(null);
@@ -64,8 +48,8 @@ export default function Dashboard({ user, onLogout }) {
   async function criarFuncionario(e) {
     e.preventDefault();
 
-    if (!nomeFuncionario.trim()) {
-      setMensagem("Informe o nome do funcionário.");
+    if (!funcionarioForm.nome.trim() || !funcionarioForm.email.trim() || !funcionarioForm.senha.trim()) {
+      setMensagem("Informe nome, email e senha do funcionário.");
       return;
     }
 
@@ -74,17 +58,19 @@ export default function Dashboard({ user, onLogout }) {
     setCredenciaisCriadas(null);
 
     try {
-      const credenciais = criarCredenciais(nomeFuncionario);
       await api.post("/auth/registro", {
-        nome: nomeFuncionario.trim(),
-        email: credenciais.email,
-        senha: credenciais.senha,
+        nome: funcionarioForm.nome.trim(),
+        email: funcionarioForm.email.trim(),
+        senha: funcionarioForm.senha,
         role: "funcionario",
       });
 
-      setCredenciaisCriadas({ nome: nomeFuncionario.trim(), ...credenciais });
-      setNomeFuncionario("");
-      setMensagem("Funcionário criado com sucesso.");
+      setCredenciaisCriadas({
+        nome: funcionarioForm.nome.trim(),
+        email: funcionarioForm.email.trim(),
+      });
+      setFuncionarioForm({ nome: "", email: "", senha: "" });
+      setMensagem("Funcionário criado e salvo no banco com sucesso.");
     } catch (error) {
       setMensagem(error?.response?.data?.msg || "Não foi possível criar o funcionário.");
     } finally {
@@ -116,14 +102,34 @@ export default function Dashboard({ user, onLogout }) {
         {pagina === "funcionarios" && isAdmin && (
           <form className="form section-block" onSubmit={criarFuncionario}>
             <h2>Criar funcionário</h2>
-            <p className="subtitle">Digite apenas o nome; o sistema gera as credenciais internas.</p>
+            <p className="subtitle">O admin define nome, email e senha. Isso já fica salvo no banco para o funcionário entrar depois.</p>
 
             <label>
               Nome
               <input
-                value={nomeFuncionario}
-                onChange={(e) => setNomeFuncionario(e.target.value)}
+                value={funcionarioForm.nome}
+                onChange={(e) => setFuncionarioForm({ ...funcionarioForm, nome: e.target.value })}
                 placeholder="Nome do funcionário"
+              />
+            </label>
+
+            <label>
+              Email
+              <input
+                type="email"
+                value={funcionarioForm.email}
+                onChange={(e) => setFuncionarioForm({ ...funcionarioForm, email: e.target.value })}
+                placeholder="funcionario@empresa.com"
+              />
+            </label>
+
+            <label>
+              Senha
+              <input
+                type="password"
+                value={funcionarioForm.senha}
+                onChange={(e) => setFuncionarioForm({ ...funcionarioForm, senha: e.target.value })}
+                placeholder="Senha de acesso"
               />
             </label>
 
@@ -136,8 +142,7 @@ export default function Dashboard({ user, onLogout }) {
             {credenciaisCriadas && (
               <div className="credentials-box">
                 <p><strong>Nome:</strong> {credenciaisCriadas.nome}</p>
-                <p><strong>Email interno:</strong> {credenciaisCriadas.email}</p>
-                <p><strong>Senha interna:</strong> {credenciaisCriadas.senha}</p>
+                <p><strong>Email:</strong> {credenciaisCriadas.email}</p>
               </div>
             )}
           </form>

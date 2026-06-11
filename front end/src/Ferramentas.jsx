@@ -6,9 +6,13 @@ export default function Ferramentas({ user }) {
   const [escalas, setEscalas] = useState([]);
   const [ferramentaAtiva, setFerramentaAtiva] = useState(null);
   const [form, setForm] = useState({ escala_id: "", data_retirada: "", hora_retirada: "" });
+  const [adminForm, setAdminForm] = useState({ nome: "", descricao: "", quantidade_total: "0" });
+  const [editandoFerramentaId, setEditandoFerramentaId] = useState(null);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.role === "admin";
 
   async function carregar() {
     setLoading(true);
@@ -44,6 +48,78 @@ export default function Ferramentas({ user }) {
     });
   }
 
+  function editarFerramenta(ferramenta) {
+    setMensagem("");
+    setErro("");
+    setEditandoFerramentaId(ferramenta.id);
+    setAdminForm({
+      nome: ferramenta.nome || "",
+      descricao: ferramenta.descricao || "",
+      quantidade_total: String(ferramenta.quantidade_total ?? 0),
+    });
+  }
+
+  function limparFormularioAdmin() {
+    setEditandoFerramentaId(null);
+    setAdminForm({ nome: "", descricao: "", quantidade_total: "0" });
+  }
+
+  async function salvarFerramentaAdmin(e) {
+    e.preventDefault();
+
+    if (!adminForm.nome.trim()) {
+      setErro("Informe o nome da ferramenta.");
+      return;
+    }
+
+    setMensagem("");
+    setErro("");
+
+    try {
+      const payload = {
+        nome: adminForm.nome.trim(),
+        descricao: adminForm.descricao,
+        quantidade_total: Number(adminForm.quantidade_total),
+      };
+
+      if (editandoFerramentaId) {
+        await api.put(`/ferramentas/${editandoFerramentaId}`, payload);
+        setMensagem("Ferramenta atualizada com sucesso.");
+      } else {
+        await api.post("/ferramentas", payload);
+        setMensagem("Ferramenta cadastrada com sucesso.");
+      }
+
+      limparFormularioAdmin();
+      await carregar();
+    } catch (error) {
+      setErro(error?.response?.data?.msg || "Não foi possível salvar a ferramenta.");
+    }
+  }
+
+  async function excluirFerramenta(ferramenta) {
+    const confirmacao = window.confirm(`Excluir a ferramenta ${ferramenta.nome}?`);
+    if (!confirmacao) {
+      return;
+    }
+
+    setMensagem("");
+    setErro("");
+
+    try {
+      await api.delete(`/ferramentas/${ferramenta.id}`);
+
+      if (editandoFerramentaId === ferramenta.id) {
+        limparFormularioAdmin();
+      }
+
+      setMensagem("Ferramenta excluída com sucesso.");
+      await carregar();
+    } catch (error) {
+      setErro(error?.response?.data?.msg || "Não foi possível excluir a ferramenta.");
+    }
+  }
+
   async function reservar(e) {
     e.preventDefault();
 
@@ -72,7 +148,56 @@ export default function Ferramentas({ user }) {
   return (
     <div className="section-block">
       <h2>Ferramentas</h2>
-      <p className="subtitle">Veja os itens disponíveis e faça reservas ligadas a uma escala.</p>
+      <p className="subtitle">
+        {isAdmin
+          ? "Cadastre novas ferramentas, altere descrições e ajuste quantidades sem reserva."
+          : "Veja os itens disponíveis e faça reservas ligadas a uma escala."}
+      </p>
+
+      {isAdmin && (
+        <form className="card section-block" onSubmit={salvarFerramentaAdmin}>
+          <h3>{editandoFerramentaId ? "Editar ferramenta" : "Nova ferramenta"}</h3>
+
+          <label>
+            Nome
+            <input
+              value={adminForm.nome}
+              onChange={(e) => setAdminForm({ ...adminForm, nome: e.target.value })}
+              placeholder="Nome da ferramenta"
+            />
+          </label>
+
+          <label>
+            Descrição
+            <input
+              value={adminForm.descricao}
+              onChange={(e) => setAdminForm({ ...adminForm, descricao: e.target.value })}
+              placeholder="Descrição da ferramenta"
+            />
+          </label>
+
+          <label>
+            Quantidade disponível
+            <input
+              type="number"
+              min="0"
+              value={adminForm.quantidade_total}
+              onChange={(e) => setAdminForm({ ...adminForm, quantidade_total: e.target.value })}
+            />
+          </label>
+
+          <div className="buttons buttons-row">
+            <button className="btn-primary" type="submit">
+              {editandoFerramentaId ? "Salvar alterações" : "Cadastrar ferramenta"}
+            </button>
+            {editandoFerramentaId && (
+              <button className="btn-secondary" type="button" onClick={limparFormularioAdmin}>
+                Cancelar edição
+              </button>
+            )}
+          </div>
+        </form>
+      )}
 
       {mensagem && <p className="error info-message">{mensagem}</p>}
       {erro && <p className="error">{erro}</p>}
@@ -87,9 +212,20 @@ export default function Ferramentas({ user }) {
               <p>{ferramenta.descricao || "Sem descrição"}</p>
               <p><strong>Disponíveis:</strong> {ferramenta.quantidade_disponivel}</p>
 
-              <button className="btn-primary" type="button" onClick={() => abrirReserva(ferramenta.id)}>
-                Reservar
-              </button>
+              {isAdmin ? (
+                <div className="buttons buttons-row">
+                  <button className="btn-secondary" type="button" onClick={() => editarFerramenta(ferramenta)}>
+                    Editar
+                  </button>
+                  <button className="btn-danger" type="button" onClick={() => excluirFerramenta(ferramenta)}>
+                    Excluir
+                  </button>
+                </div>
+              ) : (
+                <button className="btn-primary" type="button" onClick={() => abrirReserva(ferramenta.id)}>
+                  Reservar
+                </button>
+              )}
             </div>
           ))}
         </div>
