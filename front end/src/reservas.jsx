@@ -53,7 +53,6 @@ export default function Reservas({ user }) {
           {reservas.map((reserva) => (
             <div key={reserva.id} className="card section-block">
               <h3>{reserva.ferramenta_nome}</h3>
-              <p><strong>Escala:</strong> {reserva.festa_nome || "Sem escala vinculada"}</p>
               {user?.role === "admin" && <p><strong>Funcionário:</strong> {reserva.funcionario_nome}</p>}
               <p><strong>Status:</strong> {reserva.status}</p>
               <p><strong>Retirada:</strong> {reserva.data_retirada} às {reserva.hora_retirada}</p>

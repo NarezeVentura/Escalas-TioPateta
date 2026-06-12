@@ -125,11 +125,26 @@ body {
   transition: border-color 0.2s;
 }
 
+.form select {
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
 .form input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }
 
 .form input:focus {
+  border-color: #7c3aed;
+}
+
+.form select:focus {
   border-color: #7c3aed;
 }
 
@@ -180,4 +195,20 @@ body {
 
 .section-block > .card {
   margin-inline: auto;
+}
+
+.detail-box {
+  margin-inline: auto;
+}
+
+.detail-box-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.tool-reserva-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }

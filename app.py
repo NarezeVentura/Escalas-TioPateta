@@ -743,8 +743,8 @@ def reservar_ferramenta(ferramenta_id):
     user = get_current_user()
     data = request.get_json() or {}
 
-    if not all(k in data for k in ['data_retirada', 'hora_retirada', 'escala_id']):
-        return {"msg": "Campos obrigatórios: data_retirada, hora_retirada, escala_id"}, 400
+    if not all(k in data for k in ['data_retirada', 'hora_retirada']):
+        return {"msg": "Campos obrigatórios: data_retirada e hora_retirada"}, 400
 
     try:
         conn = get_connection()
@@ -756,19 +756,6 @@ def reservar_ferramenta(ferramenta_id):
             conn.close()
             return {"msg": "Ferramenta não encontrada"}, 404
 
-        c.execute("SELECT id, nome_festa FROM escalas WHERE id = ?", (data['escala_id'],))
-        escala = c.fetchone()
-        if not escala:
-            conn.close()
-            return {"msg": "Escala não encontrada"}, 404
-
-        if user['role'] != 'admin':
-            c.execute("SELECT id FROM escala_vagas WHERE escala_id = ? AND usuario_id = ?",
-                      (data['escala_id'], user_id))
-            if not c.fetchone():
-                conn.close()
-                return {"msg": "Você não está inscrito nessa escala"}, 403
-
         c.execute("SELECT COUNT(*) AS em_uso FROM ferramenta_reservas WHERE ferramenta_id = ? AND status = 'pendente'",
                   (ferramenta_id,))
         disponivel = ferramenta['quantidade_total'] - c.fetchone()['em_uso']
@@ -778,15 +765,15 @@ def reservar_ferramenta(ferramenta_id):
 
         c.execute("""
             INSERT INTO ferramenta_reservas (ferramenta_id, usuario_id, escala_id, data_retirada, hora_retirada, status)
-            VALUES (?, ?, ?, ?, ?, 'pendente')
-        """, (ferramenta_id, user_id, data['escala_id'], data['data_retirada'], data['hora_retirada']))
+            VALUES (?, ?, NULL, ?, ?, 'pendente')
+        """, (ferramenta_id, user_id, data['data_retirada'], data['hora_retirada']))
 
         reserva_id = c.lastrowid
         conn.commit()
         conn.close()
 
         return {"msg": "Ferramenta reservada com sucesso", "reserva_id": reserva_id,
-                "ferramenta": ferramenta['nome'], "festa": escala['nome_festa'],
+                "ferramenta": ferramenta['nome'],
                 "funcionario": user['nome'], "status": "pendente"}, 201
 
     except Exception as e:

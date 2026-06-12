@@ -3,9 +3,8 @@ import api from "./api";
 
 export default function Ferramentas({ user }) {
   const [ferramentas, setFerramentas] = useState([]);
-  const [escalas, setEscalas] = useState([]);
   const [ferramentaAtiva, setFerramentaAtiva] = useState(null);
-  const [form, setForm] = useState({ escala_id: "", data_retirada: "", hora_retirada: "" });
+  const [form, setForm] = useState({ data_retirada: "", hora_retirada: "" });
   const [adminForm, setAdminForm] = useState({ nome: "", descricao: "", quantidade_total: "0" });
   const [editandoFerramentaId, setEditandoFerramentaId] = useState(null);
   const [mensagem, setMensagem] = useState("");
@@ -19,13 +18,9 @@ export default function Ferramentas({ user }) {
     setErro("");
 
     try {
-      const [ferramentasRes, escalasRes] = await Promise.all([
-        api.get("/ferramentas"),
-        api.get(user?.role === "admin" ? "/escalas?futuras=false" : "/escalas"),
-      ]);
+      const ferramentasRes = await api.get("/ferramentas");
 
       setFerramentas(ferramentasRes.data.ferramentas || []);
-      setEscalas(escalasRes.data.escalas || []);
     } catch (error) {
       setErro(error?.response?.data?.msg || "Não foi possível carregar as ferramentas.");
     } finally {
@@ -42,7 +37,6 @@ export default function Ferramentas({ user }) {
     setMensagem("");
     setErro("");
     setForm({
-      escala_id: escalas[0]?.id ? String(escalas[0].id) : "",
       data_retirada: "",
       hora_retirada: "",
     });
@@ -132,7 +126,6 @@ export default function Ferramentas({ user }) {
 
     try {
       await api.post(`/ferramentas/${ferramentaAtiva}/reservar`, {
-        escala_id: Number(form.escala_id),
         data_retirada: form.data_retirada,
         hora_retirada: form.hora_retirada,
       });
@@ -232,36 +225,26 @@ export default function Ferramentas({ user }) {
       )}
 
       {ferramentaAtiva && (
-        <form className="card section-block" onSubmit={reservar}>
-          <h3>Nova reserva</h3>
+        <div className="tool-reserva-wrap">
+          <form className="card section-block" onSubmit={reservar}>
+            <h3>Nova reserva</h3>
 
-          <label>
-            Escala
-            <select value={form.escala_id} onChange={(e) => setForm({ ...form, escala_id: e.target.value })}>
-              <option value="">Selecione</option>
-              {escalas.map((escala) => (
-                <option key={escala.id} value={escala.id}>
-                  {escala.nome_festa} - {escala.data_festa}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label>
+              Data de retirada
+              <input type="date" value={form.data_retirada} onChange={(e) => setForm({ ...form, data_retirada: e.target.value })} />
+            </label>
 
-          <label>
-            Data de retirada
-            <input type="date" value={form.data_retirada} onChange={(e) => setForm({ ...form, data_retirada: e.target.value })} />
-          </label>
+            <label>
+              Hora de retirada
+              <input type="time" value={form.hora_retirada} onChange={(e) => setForm({ ...form, hora_retirada: e.target.value })} />
+            </label>
 
-          <label>
-            Hora de retirada
-            <input type="time" value={form.hora_retirada} onChange={(e) => setForm({ ...form, hora_retirada: e.target.value })} />
-          </label>
-
-          <div className="buttons buttons-row">
-            <button className="btn-primary" type="submit">Confirmar reserva</button>
-            <button className="btn-secondary" type="button" onClick={() => setFerramentaAtiva(null)}>Cancelar</button>
-          </div>
-        </form>
+            <div className="buttons buttons-row">
+              <button className="btn-primary" type="submit">Confirmar reserva</button>
+              <button className="btn-secondary" type="button" onClick={() => setFerramentaAtiva(null)}>Cancelar</button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

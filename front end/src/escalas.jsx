@@ -253,34 +253,36 @@ export default function Escalas({ user }) {
       )}
 
       {selecionada && (
-        <div className="card section-block detail-box">
-          <h2>{selecionada.nome_festa}</h2>
-          <p><strong>Local:</strong> {selecionada.local_nome}</p>
-          <p><strong>Endereço:</strong> {selecionada.local_endereco}</p>
-          <p><strong>Data:</strong> {selecionada.data_festa}</p>
-          <p><strong>Horário:</strong> {selecionada.horario_inicio} - {selecionada.horario_fim}</p>
-          <p><strong>Produto:</strong> {selecionada.produto}</p>
-          <p><strong>Status:</strong> {selecionada.status}</p>
-          <p><strong>Vagas:</strong> {selecionada.vagas_preenchidas} / {selecionada.total_vagas}</p>
+        <div className="detail-box-wrap">
+          <div className="card section-block detail-box">
+            <h2>{selecionada.nome_festa}</h2>
+            <p><strong>Local:</strong> {selecionada.local_nome}</p>
+            <p><strong>Endereço:</strong> {selecionada.local_endereco}</p>
+            <p><strong>Data:</strong> {selecionada.data_festa}</p>
+            <p><strong>Horário:</strong> {selecionada.horario_inicio} - {selecionada.horario_fim}</p>
+            <p><strong>Produto:</strong> {selecionada.produto}</p>
+            <p><strong>Status:</strong> {selecionada.status}</p>
+            <p><strong>Vagas:</strong> {selecionada.vagas_preenchidas} / {selecionada.total_vagas}</p>
 
-          <div className="vagas-lista">
-            {(selecionada.vagas || []).map((vaga) => (
-              <div key={vaga.vaga_id} className="vaga-item">
-                <strong>{vaga.nome || "Vaga aberta"}</strong>
-                <span>{vaga.confirmado_em ? "Confirmado" : "Livre"}</span>
-              </div>
-            ))}
+            <div className="vagas-lista">
+              {(selecionada.vagas || []).map((vaga) => (
+                <div key={vaga.vaga_id} className="vaga-item">
+                  <strong>{vaga.nome || "Vaga aberta"}</strong>
+                  <span>{vaga.confirmado_em ? "Confirmado" : "Livre"}</span>
+                </div>
+              ))}
+            </div>
+
+            {!isAdmin && escalaAberta && (
+              <button className="btn-primary" type="button" onClick={confirmarPresenca}>
+                {inscritoNaSelecionada ? "Cancelar presença" : "Confirmar presença"}
+              </button>
+            )}
+
+            {!isAdmin && !escalaAberta && (
+              <p className="error info-message">Esta escala está fechada. Não é possível alterar a presença.</p>
+            )}
           </div>
-
-          {!isAdmin && escalaAberta && (
-            <button className="btn-primary" type="button" onClick={confirmarPresenca}>
-              {inscritoNaSelecionada ? "Cancelar presença" : "Confirmar presença"}
-            </button>
-          )}
-
-          {!isAdmin && !escalaAberta && (
-            <p className="error info-message">Esta escala está fechada. Não é possível alterar a presença.</p>
-          )}
         </div>
       )}
     </div>
