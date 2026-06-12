@@ -19,6 +19,10 @@ body {
   padding: 32px 16px;
 }
 
+.app-layout {
+  width: 100%;
+}
+
 .card {
   width: 420px;
   background: rgba(255, 255, 255, 0.08);
@@ -164,4 +168,16 @@ body {
   font-size: 0.85rem;
   margin-top: 10px;
   text-align: center;
+}
+
+.cards-list,
+.section-grid-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.section-block > .card {
+  margin-inline: auto;
 }
