@@ -218,18 +218,29 @@ export default function Escalas({ user }) {
       {erro && <p className="error">{erro}</p>}
 
       {loading ? (
-        <div className="card section-block">
+        <div className="card section-block empty-state">
+          <div className="empty-icon">⏳</div>
           <p className="subtitle">Carregando escalas...</p>
+        </div>
+      ) : escalas.length === 0 ? (
+        <div className="card section-block empty-state">
+          <div className="empty-icon">🗓️</div>
+          <h3>Nenhuma escala por aqui</h3>
+          <p className="subtitle">Ainda não há escalas para exibir no momento.</p>
         </div>
       ) : (
         <div className="cards-list">
           {escalas.map((escala) => (
             <div key={escala.id} className="card section-block">
-              <h3>{escala.nome_festa}</h3>
+              <div className="card-top">
+                <h3>{escala.nome_festa}</h3>
+                <span className={`status-pill ${escala.status === "aberta" ? "status-pill--aberta" : "status-pill--fechada"}`}>
+                  {escala.status}
+                </span>
+              </div>
               <p>📍 {escala.local_nome}</p>
               <p>📅 {escala.data_festa}</p>
               <p>🕒 {escala.horario_inicio} - {escala.horario_fim}</p>
-              <p><strong>Status:</strong> {escala.status}</p>
 
               <div className="buttons">
                 <button className="btn-secondary" type="button" onClick={() => abrirDetalhes(escala.id)}>Ver</button>

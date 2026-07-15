@@ -157,6 +157,11 @@ export default function Dashboard({ user, onLogout }) {
           <button className="btn-link" onClick={onLogout}>Sair</button>
         </div>
 
+        <div className="dashboard-banner">
+          <span><strong>Painel principal</strong> · Organize a gestão da equipe com mais clareza</span>
+          <span>Escalas em foco</span>
+        </div>
+
         <div className="buttons">
           <button onClick={() => setPagina("escalas")}>📅 Escalas</button>
           {isAdmin && <button onClick={() => setPagina("minhas-escalas")}>📌 Minhas escalas</button>}
