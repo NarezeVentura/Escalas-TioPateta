@@ -148,14 +148,16 @@ export default function Dashboard({ user, onLogout }) {
         <div className="dashboard-header">
           <div>
             <div className="logo-placeholder">TP</div>
-            <h1>Equipe Tio Pateta</h1>
-            <p className="subtitle">Olá, {user?.nome || "usuário"}</p>
+            <div>
+              <h1>Equipe Tio Pateta</h1>
+              <p className="subtitle">Olá, {user?.nome || "usuário"}</p>
+            </div>
           </div>
 
           <button className="btn-link" onClick={onLogout}>Sair</button>
         </div>
 
-        <div className="buttons buttons-row">
+        <div className="buttons">
           <button onClick={() => setPagina("escalas")}>📅 Escalas</button>
           {isAdmin && <button onClick={() => setPagina("minhas-escalas")}>📌 Minhas escalas</button>}
           {isAdmin && <button onClick={() => setPagina("funcionarios")}>👥 Funcionários</button>}

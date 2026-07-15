@@ -21,9 +21,9 @@ export default function Login({ onLogin }) {
   return (
     <div className="container">
       <div className="card">
-        <div className="logo-placeholder">🦆</div>
+        <div className="logo-placeholder">TP</div>
         <h1>Equipe Tio Pateta</h1>
-        <p className="subtitle">Gerenciamento de Escalas</p>
+        <p className="subtitle">Gerenciamento de escalas e organização da equipe</p>
 
         <form className="form" onSubmit={handleSubmit}>
           <label>

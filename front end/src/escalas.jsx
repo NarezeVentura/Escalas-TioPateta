@@ -162,6 +162,7 @@ export default function Escalas({ user }) {
       {isAdmin && (
         <form className="form section-block" onSubmit={salvarEscala}>
           <h2>{editandoId ? "Editar escala" : "Nova escala"}</h2>
+          <p className="subtitle">Cadastre ou ajuste os detalhes da escala sem alterar o fluxo do sistema.</p>
 
           <div className="grid-2">
             <label>
@@ -206,18 +207,20 @@ export default function Escalas({ user }) {
             </label>
           </div>
 
-          <div className="buttons buttons-row">
+          <div className="buttons">
             <button className="btn-primary" type="submit">{editandoId ? "Salvar edição" : "Criar escala"}</button>
             {editandoId && <button className="btn-secondary" type="button" onClick={limparFormulario}>Cancelar edição</button>}
           </div>
         </form>
       )}
 
-      {mensagem && <p className="error info-message">{mensagem}</p>}
+      {mensagem && <p className="success info-message">{mensagem}</p>}
       {erro && <p className="error">{erro}</p>}
 
       {loading ? (
-        <p>Carregando escalas...</p>
+        <div className="card section-block">
+          <p className="subtitle">Carregando escalas...</p>
+        </div>
       ) : (
         <div className="cards-list">
           {escalas.map((escala) => (
@@ -226,9 +229,9 @@ export default function Escalas({ user }) {
               <p>📍 {escala.local_nome}</p>
               <p>📅 {escala.data_festa}</p>
               <p>🕒 {escala.horario_inicio} - {escala.horario_fim}</p>
-              <p>Status: {escala.status}</p>
+              <p><strong>Status:</strong> {escala.status}</p>
 
-              <div className="buttons buttons-row">
+              <div className="buttons">
                 <button className="btn-secondary" type="button" onClick={() => abrirDetalhes(escala.id)}>Ver</button>
                 {isAdmin ? (
                   <>
