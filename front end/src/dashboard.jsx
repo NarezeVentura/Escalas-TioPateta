@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "./api";
 import Escalas from "./escalas";
-import Ferramentas from "./Ferramentas";
-import Reservas from "./reservas";
 
 export default function Dashboard({ user, onLogout }) {
   const [pagina, setPagina] = useState("escalas");
@@ -159,8 +157,6 @@ export default function Dashboard({ user, onLogout }) {
 
         <div className="buttons buttons-row">
           <button onClick={() => setPagina("escalas")}>📅 Escalas</button>
-          <button onClick={() => setPagina("ferramentas")}>🛠 Ferramentas</button>
-          <button onClick={() => setPagina("reservas")}>📋 Reservas</button>
           {isAdmin && <button onClick={() => setPagina("minhas-escalas")}>📌 Minhas escalas</button>}
           {isAdmin && <button onClick={() => setPagina("funcionarios")}>👥 Funcionários</button>}
           {isAdmin && <button onClick={() => setPagina("usuarios")}>🧑‍💼 Usuários</button>}
@@ -338,8 +334,6 @@ export default function Dashboard({ user, onLogout }) {
         )}
 
         {pagina === "escalas" && <Escalas user={user} />}
-        {pagina === "ferramentas" && <Ferramentas user={user} />}
-        {pagina === "reservas" && <Reservas user={user} />}
       </div>
     </div>
   );

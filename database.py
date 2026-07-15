@@ -62,74 +62,15 @@ def init_db():
         )
     """)
 
-    #FERRAMENTAS DE TRABALHO
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS ferramentas (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome             TEXT    NOT NULL UNIQUE,
-            descricao        TEXT,
-            quantidade_total INTEGER NOT NULL DEFAULT 0,
-            criado_em        TEXT    NOT NULL DEFAULT (datetime('now'))
-        )
-    """)
-
-    #AS RESERVAS DE FERRAMENTAS 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS ferramenta_reservas (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        ferramenta_id   INTEGER NOT NULL REFERENCES ferramentas(id) ON DELETE CASCADE,
-        usuario_id      INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-        escala_id       INTEGER REFERENCES escalas(id) ON DELETE SET NULL,
-        data_retirada   TEXT    NOT NULL,
-        hora_retirada   TEXT    NOT NULL,
-        status          TEXT    NOT NULL DEFAULT 'pendente',
-        devolvido_em    TEXT    DEFAULT NULL,
-        criado_em       TEXT    NOT NULL DEFAULT (datetime('now'))
-    )
-""")
     conn.commit()
     
     # Criar admin inicial se não existir
     criar_admin_inicial(conn)
-    
-    # Inserir ferramentas iniciais padrão
-    inserir_ferramentas_iniciais(conn)
 
     garantir_coluna_criado_por(conn)
     
     conn.close()
     print("Banco de dados inicializado.")
-
-
-def inserir_ferramentas_iniciais(conn):
-    """Inserir ferramentas padrão se não existirem"""
-    c = conn.cursor()
-
-    ferramentas = [
-        ("Coletes verdes",              "Pacotes de coletes da cor verde",      2),
-        ("Coletes vermelhos",           "Pacotes de coletes da cor vermelha",   2),
-        ("Coletes azuis",               "Pacotes de coletes da cor azul",       2),
-        ("Coletes pretos",              "Pacotes de coletes da cor preta",      2),
-        ("Pistolas Nerf",               "Pistolas Nerf",                        6),
-        ("Caixas de dardos Nerf",       "Caixas de dardos para pistolas Nerf",  3),
-        ("Kits de cones",               "Kits de cones para delimitação",       4),
-        ("Apitos",                      "Apitos",                               4),
-        ("Bolas de futebol",            "Bolas de futebol",                     2),
-        ("Bolas de vôlei",              "Bolas de vôlei",                       2),
-        ("Bolas de basquete",           "Bolas de basquete",                    2),
-        ("Sacos para corrida de saco",  "Sacos para brincadeira de corrida",    4),
-        ("Kits de tintas antialérgicas","Kits de tintas antialérgicas",         6),
-        ("Kits de pincéis",             "Kits de pincéis",                      6),
-    ]
-
-    for nome, descricao, quantidade in ferramentas:
-        c.execute("""
-            INSERT OR IGNORE INTO ferramentas (nome, descricao, quantidade_total)
-            VALUES (?, ?, ?)
-        """, (nome, descricao, quantidade))
-
-    conn.commit()
-    print("Ferramentas iniciais inseridas!")
 
 
 def criar_admin_inicial(conn):
